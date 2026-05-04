@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ne">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TruthLens Nepal | समाचार सत्यापन केन्द्र</title>
+    <meta name="description" content="TruthLens Nepal - AI-powered fake news verification for Nepali news portals. OnlineKhabar, Setopati, Kantipur सत्यापन।">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Hind:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+<!-- ===================== LOGIN PAGE ===================== -->
+<div id="login-page" class="page active animate-fade-in">
+
+    <!-- Top Utility Bar -->
+    <div class="top-bar">
+        <div class="top-bar-inner">
+            <span class="nepali-date" id="nepali-date-login">२०८१ वैशाख २१, आइतवार</span>
+            <div class="top-bar-right">
+                <span><i class="fas fa-thermometer-half"></i> काठमाडौं: २८°C</span>
+                <span class="divider-pipe">|</span>
+                <span>USD: १३३.२५ रु</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Header -->
+    <div class="login-main-header">
+        <div class="login-logo-area">
+            <div class="logo-emblem"><img src="logo.png" alt="TruthLens Nepal Logo" class="header-logo-img"></div>
+            <div>
+                <h1 class="login-brand">TruthLens <span>Nepal</span></h1>
+                <p class="login-brand-sub">समाचार सत्यापन केन्द्र &nbsp;|&nbsp; AI-Powered Fake News Detector</p>
+            </div>
+        </div>
+        <div class="header-trust-badges">
+            <span><i class="fas fa-lock"></i> SSL सुरक्षित</span>
+            <span><i class="fas fa-robot"></i> AI संचालित</span>
+            <span>🇳🇵 नेपाल मानक</span>
+        </div>
+    </div>
+
+    <!-- Breaking News Ticker -->
+    <div class="breaking-ticker">
+        <div class="ticker-label"><i class="fas fa-bolt"></i> ताजा</div>
+        <div class="ticker-track">
+            <div class="ticker-scroll">
+                <span>TruthLens Nepal मा स्वागत छ — नेपाली समाचार सत्यापन गर्नुहोस् &nbsp;|&nbsp; OnlineKhabar, Setopati, Kantipur समाचार विश्लेषण &nbsp;|&nbsp; AI प्रविधिले झूटा खबर पत्ता लगाउँछ &nbsp;|&nbsp; अफवाहबाट सावधान रहनुहोस् &nbsp;|&nbsp;&nbsp;</span>
+                <span>TruthLens Nepal मा स्वागत छ — नेपाली समाचार सत्यापन गर्नुहोस् &nbsp;|&nbsp; OnlineKhabar, Setopati, Kantipur समाचार विश्लेषण &nbsp;|&nbsp; AI प्रविधिले झूटा खबर पत्ता लगाउँछ &nbsp;|&nbsp; अफवाहबाट सावधान रहनुहोस् &nbsp;|&nbsp;&nbsp;</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Body -->
+    <div class="login-body">
+        <div class="login-card">
+            <div class="login-card-heading">
+                <h2>प्रवेश गर्नुहोस्</h2>
+                <p>सत्यापन सेवामा पहुँच गर्न लगइन गर्नुहोस्</p>
+            </div>
+
+            <div class="portal-selector">
+                <label class="portal-opt">
+                    <input type="radio" name="portal" value="citizen" checked>
+                    <span><i class="fas fa-user"></i> नागरिक पहुँच</span>
+                </label>
+                <label class="portal-opt">
+                    <input type="radio" name="portal" value="admin">
+                    <span><i class="fas fa-shield-alt"></i> प्रशासक</span>
+                </label>
+            </div>
+
+            <div class="google-btn" role="button" tabindex="0">
+                <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" width="20" alt="Google">
+                Google खाताबाट प्रवेश गर्नुहोस्
+            </div>
+
+            <div class="or-divider"><span>वा इमेलबाट</span></div>
+
+            <h4 id="portal-title">नागरिक पहुँच पोर्टल</h4>
+
+            <form id="login-form">
+                <div class="input-group">
+                    <label>प्रयोगकर्ता नाम / Email</label>
+                    <div class="input-wrap">
+                        <i class="fas fa-user"></i>
+                        <input type="text" id="username" placeholder="ID वा Email लेख्नुहोस्" required>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>पासवर्ड</label>
+                    <div class="input-wrap">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="password" placeholder="सुरक्षा कुञ्जी" required>
+                    </div>
+                </div>
+                <button type="submit" class="primary-btn" id="login-btn">
+                    <i class="fas fa-unlock-alt"></i> प्रवेश गर्नुहोस्
+                </button>
+            </form>
+
+            <div class="login-footer-note">
+                लगइन गरेर तपाईं हाम्रो <b>सत्यनिष्ठा मानक</b>सँग सहमत हुनुहुन्छ।<br>
+                <a href="#">सहायता चाहिन्छ?</a>
+            </div>
+        </div>
+
+        <!-- Side Info -->
+        <div class="login-side">
+            <div class="side-card">
+                <div class="side-card-icon">🔍</div>
+                <h3>AI विश्लेषण</h3>
+                <p>मशिन लर्निङ प्रविधिले समाचारको सत्यता परीक्षण गर्छ</p>
+            </div>
+            <div class="side-card">
+                <div class="side-card-icon">📰</div>
+                <h3>नेपाली स्रोत</h3>
+                <p>OnlineKhabar, Setopati, Kantipur लगायत १०+ स्रोत</p>
+            </div>
+            <div class="side-card">
+                <div class="side-card-icon">⚡</div>
+                <h3>तुरुन्त परिणाम</h3>
+                <p>केही सेकेन्डमा विश्वसनीयता स्कोर पाउनुहोस्</p>
+            </div>
+            <div class="login-stats">
+                <div class="login-stat"><span class="ls-num">२,४५०+</span><span class="ls-lbl">समाचार विश्लेषण</span></div>
+                <div class="login-stat"><span class="ls-num">९२.४%</span><span class="ls-lbl">शुद्धता</span></div>
+                <div class="login-stat"><span class="ls-num">१०+</span><span class="ls-lbl">स्रोतहरू</span></div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="login-page-footer">
+        <p>TRUTHLENS NEPAL &copy; २०२६ &nbsp;|&nbsp; समाचार सत्यापन केन्द्र &nbsp;|&nbsp; Secure &bull; Transparent &bull; Reliable</p>
+    </footer>
+</div>
+
+<!-- ===================== DASHBOARD PAGE ===================== -->
+<div id="dashboard-page" class="page">
+
+    <!-- Top Utility Bar -->
+    <div class="top-bar">
+        <div class="top-bar-inner">
+            <span class="nepali-date">२०८१ वैशाख २१, आइतवार</span>
+            <div class="top-bar-right">
+                <span><i class="fas fa-user-circle"></i> <span id="display-user-top">Guest</span></span>
+                <span class="divider-pipe">|</span>
+                <span id="display-portal-top">नागरिक</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Header -->
+    <header class="main-header">
+        <div class="header-inner">
+            <div class="header-logo">
+                <span class="logo-icon"><img src="logo.png" alt="TruthLens Nepal" class="header-logo-img"></span>
+                <div>
+                    <div class="logo-name">TruthLens <em>Nepal</em></div>
+                    <div class="logo-tagline">समाचार सत्यापन केन्द्र</div>
+                </div>
+            </div>
+            <div class="header-search-bar">
+                <input type="text" placeholder="समाचार खोज्नुहोस्..." id="header-search">
+                <button class="search-go"><i class="fas fa-search"></i></button>
+            </div>
+            <div class="header-user-actions">
+                <span class="user-tag"><i class="fas fa-user-circle"></i> <span id="display-user">Guest</span></span>
+                <button class="logout-btn-top" id="logout-btn"><i class="fas fa-sign-out-alt"></i> निस्कनुहोस्</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Category Nav -->
+    <nav class="category-nav">
+        <div class="cat-nav-inner">
+            <a href="#" class="cat-item active" data-target="feed"><i class="fas fa-broadcast-tower"></i> समाचार फिड</a>
+            <a href="#" class="cat-item" data-target="scan"><i class="fas fa-search"></i> सत्यापन</a>
+            <a href="#" class="cat-item" data-target="trending"><i class="fas fa-fire"></i> संदिग्ध</a>
+            <a href="#" class="cat-item" data-target="admin" id="nav-admin" style="display:none;"><i class="fas fa-shield-alt"></i> प्रशासक</a>
+            <div class="nav-live-badge"><span class="live-dot"></span> LIVE</div>
+        </div>
+    </nav>
+
+    <!-- Breaking Ticker -->
+    <div class="breaking-ticker">
+        <div class="ticker-label"><i class="fas fa-bolt"></i> ताजा</div>
+        <div class="ticker-track">
+            <div class="ticker-scroll">
+                <span>सरकारले नयाँ आर्थिक नीति घोषणा गर्दै &nbsp;|&nbsp; काठमाडौंमा वायु प्रदूषण उच्च &nbsp;|&nbsp; नेपाल क्रिकेट टोलीको ऐतिहासिक विजय &nbsp;|&nbsp; संसदमा नयाँ विधेयक पेश &nbsp;|&nbsp; पर्यटन क्षेत्रमा सुधार आउँदै &nbsp;|&nbsp;&nbsp;</span>
+                <span>सरकारले नयाँ आर्थिक नीति घोषणा गर्दै &nbsp;|&nbsp; काठमाडौंमा वायु प्रदूषण उच्च &nbsp;|&nbsp; नेपाल क्रिकेट टोलीको ऐतिहासिक विजय &nbsp;|&nbsp; संसदमा नयाँ विधेयक पेश &nbsp;|&nbsp; पर्यटन क्षेत्रमा सुधार आउँदै &nbsp;|&nbsp;&nbsp;</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Layout -->
+    <div class="dashboard-wrap">
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="widget">
+                <div class="widget-title"><i class="fas fa-cog"></i> द्रुत कार्यहरू</div>
+                <button class="side-action-btn" id="refresh-btn"><i class="fas fa-sync-alt"></i> पुनः लोड</button>
+                <button class="side-action-btn danger" id="logout-btn-side"><i class="fas fa-sign-out-alt"></i> निस्कनुहोस्</button>
+            </div>
+
+            <div class="widget">
+                <div class="widget-title"><i class="fas fa-user"></i> प्रयोगकर्ता</div>
+                <div class="user-widget">
+                    <div class="user-avatar-icon"><i class="fas fa-user-circle"></i></div>
+                    <div class="user-widget-info">
+                        <strong id="display-user-side">Guest</strong>
+                        <span id="display-portal">नागरिक पहुँच</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="widget">
+                <div class="widget-title"><i class="fas fa-history"></i> हालका सत्यापन</div>
+                <ul id="scan-history" class="scan-history-list"></ul>
+            </div>
+
+            <div class="widget">
+                <div class="widget-title"><i class="fas fa-check-circle"></i> विश्वसनीय स्रोत</div>
+                <div class="trusted-sources">
+                    <span class="src-chip">OnlineKhabar</span>
+                    <span class="src-chip">Setopati</span>
+                    <span class="src-chip">Kantipur</span>
+                    <span class="src-chip">Ratopati</span>
+                    <span class="src-chip">Nepali Times</span>
+                    <span class="src-chip">RSS Nepal</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+
+            <!-- News Feed -->
+            <div class="view-content active" id="view-feed">
+                <div class="section-hdr">
+                    <h2><i class="fas fa-broadcast-tower"></i> समाचार फिड</h2>
+                    <p class="live-line"><span class="live-dot"></span> LIVE — अन्तिम अपडेट: <span id="sync-time"></span></p>
+                </div>
+                <div id="news-container"></div>
+            </div>
+
+            <!-- Forensic Scan -->
+            <div class="view-content" id="view-scan">
+                <div class="section-hdr">
+                    <h2><i class="fas fa-search"></i> समाचार सत्यापन</h2>
+                    <p>AI प्रविधि प्रयोग गरी समाचारको सत्यता जाँच गर्नुहोस्</p>
+                </div>
+                <div class="scan-card">
+                    <label class="scan-lbl"><i class="fas fa-paste"></i> समाचारको पाठ टाँस्नुहोस् (Nepali वा English)</label>
+                    <textarea id="scan-text" placeholder="यहाँ समाचारको शीर्षक वा पूरा पाठ टाँस्नुहोस्..."></textarea>
+                    <button class="primary-btn" id="btn-scan">
+                        <i class="fas fa-microscope"></i> सत्यापन सुरु गर्नुहोस्
+                    </button>
+                    <div id="scan-result-container"></div>
+                </div>
+                <div class="url-scan-card">
+                    <h3><i class="fas fa-link"></i> URL बाट सत्यापन</h3>
+                    <p>OnlineKhabar, Setopati वा अन्य पोर्टलको लिंक पेस्ट गर्नुहोस्</p>
+                    <div class="url-row">
+                        <div class="input-wrap" style="flex:1;">
+                            <i class="fas fa-globe"></i>
+                            <input type="text" id="url-input" placeholder="https://www.onlinekhabar.com/...">
+                        </div>
+                        <button class="primary-btn url-btn" id="btn-url-scan">
+                            <i class="fas fa-search"></i> विश्लेषण
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trending -->
+            <div class="view-content" id="view-trending">
+                <div class="section-hdr">
+                    <h2><i class="fas fa-fire"></i> संदिग्ध समाचारहरू</h2>
+                    <p>हालै पत्ता लागेका उच्च जोखिमका गलत सूचनाहरू</p>
+                </div>
+                <div id="trending-container"></div>
+            </div>
+
+            <!-- Admin -->
+            <div class="view-content" id="view-admin">
+                <div class="section-hdr">
+                    <h2><i class="fas fa-shield-alt"></i> प्रशासनिक नियन्त्रण केन्द्र</h2>
+                    <p>प्रणाली अवलोकन, डेटासेट व्यवस्थापन र मोडेल प्रदर्शन</p>
+                </div>
+
+                <!-- KPI Cards -->
+                <div class="admin-kpi-grid">
+                    <div class="kpi-card kpi-blue">
+                        <div class="kpi-icon"><i class="fas fa-database"></i></div>
+                        <div class="kpi-body">
+                            <div class="kpi-val">२,४५०</div>
+                            <div class="kpi-lbl">कुल नमूनाहरू</div>
+                            <div class="kpi-trend up"><i class="fas fa-arrow-up"></i> +१२०  यस हप्ता</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-green">
+                        <div class="kpi-icon"><i class="fas fa-check-circle"></i></div>
+                        <div class="kpi-body">
+                            <div class="kpi-val">१,२१०</div>
+                            <div class="kpi-lbl">सत्य समाचार</div>
+                            <div class="kpi-trend up"><i class="fas fa-arrow-up"></i> ४९.४%  अनुपात</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-red">
+                        <div class="kpi-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                        <div class="kpi-body">
+                            <div class="kpi-val">१,२४०</div>
+                            <div class="kpi-lbl">झूटा समाचार</div>
+                            <div class="kpi-trend down"><i class="fas fa-arrow-up"></i> ५०.६%  अनुपात</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-gold">
+                        <div class="kpi-icon"><i class="fas fa-bullseye"></i></div>
+                        <div class="kpi-body">
+                            <div class="kpi-val">९२.४%</div>
+                            <div class="kpi-lbl">मोडेल शुद्धता</div>
+                            <div class="kpi-trend up"><i class="fas fa-arrow-up"></i> +०.३%  अघिल्लो महिनाभन्दा</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Model Performance + Activity Log -->
+                <div class="admin-two-col">
+                    <!-- Model Performance -->
+                    <div class="admin-panel-card">
+                        <div class="admin-panel-hdr">
+                            <span><i class="fas fa-chart-bar"></i> मोडेल प्रदर्शन</span>
+                            <span class="badge-live">LIVE</span>
+                        </div>
+                        <div class="perf-metrics">
+                            <div class="perf-row">
+                                <span class="perf-lbl">शुद्धता (Accuracy)</span>
+                                <div class="perf-bar-wrap"><div class="perf-bar" style="width:92.4%;background:#16a34a;"></div></div>
+                                <span class="perf-pct">९२.४%</span>
+                            </div>
+                            <div class="perf-row">
+                                <span class="perf-lbl">Precision</span>
+                                <div class="perf-bar-wrap"><div class="perf-bar" style="width:91%;background:#2563eb;"></div></div>
+                                <span class="perf-pct">९१.०%</span>
+                            </div>
+                            <div class="perf-row">
+                                <span class="perf-lbl">Recall</span>
+                                <div class="perf-bar-wrap"><div class="perf-bar" style="width:89%;background:#7c3aed;"></div></div>
+                                <span class="perf-pct">८९.०%</span>
+                            </div>
+                            <div class="perf-row">
+                                <span class="perf-lbl">F1 Score</span>
+                                <div class="perf-bar-wrap"><div class="perf-bar" style="width:90%;background:#C8102E;"></div></div>
+                                <span class="perf-pct">९०.०%</span>
+                            </div>
+                            <div class="perf-row">
+                                <span class="perf-lbl">AUC-ROC</span>
+                                <div class="perf-bar-wrap"><div class="perf-bar" style="width:96%;background:#d97706;"></div></div>
+                                <span class="perf-pct">९६.०%</span>
+                            </div>
+                        </div>
+                        <div class="confusion-matrix">
+                            <div class="cm-title">Confusion Matrix</div>
+                            <table class="cm-table">
+                                <thead><tr><th></th><th>Pred: सत्य</th><th>Pred: झूटा</th></tr></thead>
+                                <tbody>
+                                    <tr><td>Actual: सत्य</td><td class="cm-tp">१,१०५</td><td class="cm-fn">१०५</td></tr>
+                                    <tr><td>Actual: झूटा</td><td class="cm-fp">८५</td><td class="cm-tn">१,१५५</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Activity Log -->
+                    <div class="admin-panel-card">
+                        <div class="admin-panel-hdr">
+                            <span><i class="fas fa-history"></i> हालको गतिविधि लग</span>
+                            <button class="admin-mini-btn" onclick="clearActivityLog()"><i class="fas fa-trash"></i> खाली गर्नुहोस्</button>
+                        </div>
+                        <ul class="activity-log" id="activity-log">
+                            <li class="log-item log-scan"><span class="log-dot"></span><div><strong>समाचार सत्यापन</strong><p>OnlineKhabar लिंक विश्लेषण गरियो</p><time>२ मिनेट अघि</time></div></li>
+                            <li class="log-item log-alert"><span class="log-dot"></span><div><strong>संदिग्ध समाचार</strong><p>उच्च जोखिमको सामग्री पत्ता लाग्यो</p><time>७ मिनेट अघि</time></div></li>
+                            <li class="log-item log-login"><span class="log-dot"></span><div><strong>प्रशासक लगइन</strong><p>admin प्रयोगकर्ता प्रवेश गर्नुभयो</p><time>१२ मिनेट अघि</time></div></li>
+                            <li class="log-item log-scan"><span class="log-dot"></span><div><strong>बल्क विश्लेषण</strong><p>४ समाचार एकैचोटि सत्यापन गरियो</p><time>२५ मिनेट अघि</time></div></li>
+                            <li class="log-item log-success"><span class="log-dot"></span><div><strong>मोडेल अपडेट</strong><p>v2.1 मोडेल सफलतापूर्वक लोड भयो</p><time>१ घण्टा अघि</time></div></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Source Management + System Health -->
+                <div class="admin-two-col" style="margin-top:20px;">
+                    <!-- Source Registry -->
+                    <div class="admin-panel-card">
+                        <div class="admin-panel-hdr">
+                            <span><i class="fas fa-list-alt"></i> स्रोत रजिस्ट्री</span>
+                            <span class="source-count-badge">६ स्रोत</span>
+                        </div>
+                        <table class="source-table">
+                            <thead><tr><th>स्रोत</th><th>स्थिति</th><th>विश्वसनीयता</th><th>अन्तिम जाँच</th></tr></thead>
+                            <tbody>
+                                <tr><td><strong>OnlineKhabar</strong></td><td><span class="status-chip active">सक्रिय</span></td><td><span class="trust-stars">★★★★★</span></td><td>आज</td></tr>
+                                <tr><td><strong>Setopati</strong></td><td><span class="status-chip active">सक्रिय</span></td><td><span class="trust-stars">★★★★★</span></td><td>आज</td></tr>
+                                <tr><td><strong>Kantipur</strong></td><td><span class="status-chip active">सक्रिय</span></td><td><span class="trust-stars">★★★★☆</span></td><td>हिजो</td></tr>
+                                <tr><td><strong>Ratopati</strong></td><td><span class="status-chip active">सक्रिय</span></td><td><span class="trust-stars">★★★★☆</span></td><td>हिजो</td></tr>
+                                <tr><td><strong>Nepali Times</strong></td><td><span class="status-chip active">सक्रिय</span></td><td><span class="trust-stars">★★★★★</span></td><td>आज</td></tr>
+                                <tr><td><strong>Unknown Blogs</strong></td><td><span class="status-chip inactive">निष्क्रिय</span></td><td><span class="trust-stars red-star">★☆☆☆☆</span></td><td>—</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- System Health -->
+                    <div class="admin-panel-card">
+                        <div class="admin-panel-hdr">
+                            <span><i class="fas fa-heartbeat"></i> प्रणाली स्वास्थ्य</span>
+                            <span class="badge-online"><i class="fas fa-circle"></i> अनलाइन</span>
+                        </div>
+                        <div class="sys-health-list">
+                            <div class="health-row">
+                                <div class="health-info"><i class="fas fa-brain"></i><span>ML मोडेल (v2.1)</span></div>
+                                <span class="health-badge ok">✅ चलिरहेको</span>
+                            </div>
+                            <div class="health-row">
+                                <div class="health-info"><i class="fas fa-database"></i><span>डेटाबेस</span></div>
+                                <span class="health-badge ok">✅ जोडिएको</span>
+                            </div>
+                            <div class="health-row">
+                                <div class="health-info"><i class="fas fa-rss"></i><span>समाचार फिड API</span></div>
+                                <span class="health-badge ok">✅ सक्रिय</span>
+                            </div>
+                            <div class="health-row">
+                                <div class="health-info"><i class="fas fa-shield-alt"></i><span>सुरक्षा प्रणाली</span></div>
+                                <span class="health-badge ok">✅ सुरक्षित</span>
+                            </div>
+                            <div class="health-row">
+                                <div class="health-info"><i class="fas fa-clock"></i><span>API Response</span></div>
+                                <span class="health-badge warn">⚡ १२०ms</span>
+                            </div>
+                        </div>
+                        <div class="admin-actions-row">
+                            <button class="admin-action-btn primary" onclick="alert('मोडेल पुनः तालिम शुरु भयो!')"><i class="fas fa-redo"></i> मोडेल रिट्रेन</button>
+                            <button class="admin-action-btn secondary" onclick="alert('ब्याकअप सिर्जना भयो!')"><i class="fas fa-save"></i> ब्याकअप</button>
+                            <button class="admin-action-btn danger" onclick="alert('क्यास खाली भयो!')"><i class="fas fa-trash"></i> क्यास खाली</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <footer class="main-footer">
+        <div class="footer-inner">
+            <div class="footer-brand">🛡️ <strong>TruthLens Nepal</strong> &nbsp;&copy; २०२६</div>
+            <div class="footer-links">
+                <a href="#">गोपनीयता नीति</a>
+                <a href="#">सेवा सर्त</a>
+                <a href="#">सम्पर्क</a>
+            </div>
+            <div class="footer-right">Secure &bull; Transparent &bull; Reliable</div>
+        </div>
+    </footer>
+</div>
+
+<script src="script.js"></script>
+<script>
+    // Sync extra display elements
+    const origForm = document.getElementById('login-form');
+    if (origForm) {
+        origForm.addEventListener('submit', () => {
+            setTimeout(() => {
+                const u = document.getElementById('display-user')?.textContent || 'Guest';
+                const p = document.getElementById('display-portal')?.textContent || '';
+                const ut = document.getElementById('display-user-top');
+                const us = document.getElementById('display-user-side');
+                const pt = document.getElementById('display-portal-top');
+                if (ut) ut.textContent = u;
+                if (us) us.textContent = u;
+                if (pt) pt.textContent = p;
+            }, 150);
+        });
+    }
+    const logoutSide = document.getElementById('logout-btn-side');
+    if (logoutSide) {
+        logoutSide.addEventListener('click', () => document.getElementById('logout-btn')?.click());
+    }
+
+    // Nav: use cat-item class
+    document.querySelectorAll('.cat-item').forEach(item => {
+        item.addEventListener('click', e => {
+            e.preventDefault();
+            const target = item.getAttribute('data-target');
+            document.querySelectorAll('.cat-item').forEach(n => n.classList.remove('active'));
+            item.classList.add('active');
+            document.querySelectorAll('.view-content').forEach(v => v.classList.remove('active'));
+            const tv = document.getElementById(`view-${target}`);
+            if (tv) tv.classList.add('active');
+        });
+    });
+</script>
+</body>
+</html>
