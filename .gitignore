@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+.ipynb_checkpoints/
+.pytest_cache/
+outputs/*.joblib
+outputs/*.json
+!outputs/metrics.json
