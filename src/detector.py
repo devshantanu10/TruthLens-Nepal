@@ -17,7 +17,6 @@ import re
 import logging
 import pandas as pd
 import joblib
-import streamlit as st
 from typing import Tuple, List, Dict, Optional
 from .config import (
     MODEL_PATH, DATA_PATH_TRUE, DATA_PATH_FAKE,
@@ -53,7 +52,8 @@ def clean_text(text: str) -> str:
     # Convert to lowercase for consistency
     text = text.lower()
     
-    # Remove special characters while keeping Nepali (0900-097F) & English
+    # IMPORTANT: Keep this consistent with train_model.py — strip numbers too,
+    # since the model was trained without numbers in the vocabulary.
     text = re.sub(r"[^\u0900-\u097Fa-z\s]", " ", text)
     
     # Remove extra whitespace
@@ -105,25 +105,21 @@ def load_model() -> Optional[object]:
         return None
 
 
-@st.cache_data(ttl=3600)
 def load_datasets() -> Tuple[Optional[pd.DataFrame], Optional[pd.DataFrame]]:
     """
     Load true and fake news datasets.
-    
-    Returns:
-        Tuple: (true_df, fake_df) or (None, None) if failed
     """
     try:
         true_df = pd.read_csv(DATA_PATH_TRUE)
         fake_df = pd.read_csv(DATA_PATH_FAKE)
         logger.info(f"Datasets loaded: {len(true_df)} true, {len(fake_df)} fake articles")
         return true_df, fake_df
-    except FileNotFoundError as e:
-        logger.error(f"Dataset not found: {e}")
-        return None, None
     except Exception as e:
         logger.error(f"Error loading datasets: {e}")
         return None, None
+
+# Global datasets for performance
+TRUE_DATASET, FAKE_DATASET = load_datasets()
 
 
 # ============================================================================
@@ -151,13 +147,34 @@ def phase_1_database_lookup(
         return None
     
     try:
-        # Check for exact match in true news
-        if any(cleaned_text in clean_text(str(val)) for val in true_df.get('text', [])):
-            return "Credible", 1.0, ["✅ Verified in trusted news database"]
-        
-        # Check for exact match in fake news
-        if any(cleaned_text in clean_text(str(val)) for val in fake_df.get('text', [])):
-            return "Uncredible", 1.0, ["🚨 Found in documented misinformation database"]
+        # Only do database lookup for longer texts (>80 chars cleaned) to avoid false matches
+        if len(cleaned_text) > 80:
+            # Check FAKE first — higher priority to catch misinformation
+            for val in fake_df.get('text', []):
+                cv = clean_text(str(val))
+                if len(cv) < 80:
+                    continue
+                # Require a very high overlap (80%+ of words match in both directions)
+                set_input = set(cleaned_text.split())
+                set_val = set(cv.split())
+                if len(set_input) == 0 or len(set_val) == 0:
+                    continue
+                overlap = len(set_input & set_val) / min(len(set_input), len(set_val))
+                if overlap > 0.8:
+                    return "Uncredible", 0.97, ["🚨 गलत सूचना डेटाबेसमा भेटियो — पूर्व-दस्तावेजीकृत झूटा खबर"]
+            
+            # Then check TRUE
+            for val in true_df.get('text', []):
+                cv = clean_text(str(val))
+                if len(cv) < 80:
+                    continue
+                set_input = set(cleaned_text.split())
+                set_val = set(cv.split())
+                if len(set_input) == 0 or len(set_val) == 0:
+                    continue
+                overlap = len(set_input & set_val) / min(len(set_input), len(set_val))
+                if overlap > 0.8:
+                    return "Credible", 0.97, ["✅ विश्वसनीय समाचार डेटाबेसमा भेटियो"]
     
     except Exception as e:
         logger.warning(f"Database lookup error: {e}")
@@ -171,6 +188,7 @@ def phase_2_live_news_cross_reference(
 ) -> bool:
     """
     Phase 2: Cross-reference with live news from trusted sources.
+    Excludes the current article if it matches the input content exactly.
     
     Args:
         cleaned_text (str): Cleaned input text
@@ -187,12 +205,18 @@ def phase_2_live_news_cross_reference(
         
         for article in live_news:
             article_text = f"{article.get('title', '')} {article.get('description', '')}"
-            article_keywords = set(clean_text(article_text).split())
+            article_cleaned = clean_text(article_text)
             
+            # CRITICAL FIX: If the cleaned text is nearly identical to the live news article,
+            # it might be the article itself. We need to find DIFFERENT sources reporting the same thing.
+            if cleaned_text in article_cleaned or article_cleaned in cleaned_text:
+                continue
+                
+            article_keywords = set(article_cleaned.split())
             intersection = input_keywords.intersection(article_keywords)
             
-            # If >40% of keywords match, consider verified
-            if len(input_keywords) > 0 and len(intersection) / len(input_keywords) > 0.4:
+            # If >70% of keywords match (minimum 5 keywords) and it's from a different source, consider verified
+            if len(input_keywords) >= 5 and len(intersection) / len(input_keywords) > 0.7:
                 return True
     
     except Exception as e:
@@ -322,8 +346,8 @@ def predict_authenticity(
     reasons = []
     
     # ===== PHASE 1: DATABASE LOOKUP =====
-    # Load datasets once and reuse
-    true_df, fake_df = load_datasets()
+    # Use global datasets
+    true_df, fake_df = TRUE_DATASET, FAKE_DATASET
     
     # Ensure cleaned text is not empty
     if not cleaned:
@@ -357,25 +381,21 @@ def predict_authenticity(
     ml_probability = phase_4_ml_prediction(cleaned, pipeline)
     
     # ===== FINAL CONSENSUS =====
-    # Adjust ML probability based on live news verification
-    # If source is verified, we have high confidence it's credible
-    if source_verified:
-        # Heavily discount fake news probability if verified by trusted sources
-        adjusted_ml_prob = ml_probability * 0.3
-    else:
-        # If not found in live news, we don't force 'Uncredible', 
-        # but we add a slight caution weight to the ML result.
-        adjusted_ml_prob = min(ml_probability + 0.1, 1.0)
-    
-    # Combine scores with weights
     # final_score represents probability of being UNCREDIBLE
-    final_score = (adjusted_ml_prob * ML_MODEL_WEIGHT) + (heuristic_score * HEURISTIC_WEIGHT)
+    # We trust the ML model strongly. Live news cross-reference is disabled
+    # (live_news=None from API) to avoid slow fetches during prediction.
+    final_score = (ml_probability * ML_MODEL_WEIGHT) + (heuristic_score * HEURISTIC_WEIGHT)
     final_score = min(max(final_score, 0.0), 1.0)
     
     # Determine verdict
     is_fake = final_score >= threshold
     verdict = "Uncredible" if is_fake else "Credible"
     
-    logger.info(f"Prediction: {verdict} (Score: {final_score:.2%})")
+    # Confidence should reflect how confident we are in the VERDICT:
+    # - If Uncredible: confidence = final_score (how sure we are it's fake)
+    # - If Credible: confidence = 1 - final_score (how sure we are it's real)
+    confidence = final_score if is_fake else (1.0 - final_score)
     
-    return verdict, final_score, reasons, heuristic_score, detected_parties
+    logger.info(f"Prediction: {verdict} (Confidence: {confidence:.2%}, Raw Score: {final_score:.2%})")
+    
+    return verdict, confidence, reasons, heuristic_score, detected_parties
