@@ -169,46 +169,27 @@ function updateAdminDashboard(m) {
 // ── Updated Mock Data (Fallback) ──
 const MOCK_NEWS_FALLBACK = [
     {
-        source: "OnlineKhabar", category: "अर्थ",
+        source: "OnlineKhabar", 
+        category: "अर्थ",
         link: "https://www.onlinekhabar.com",
         title: "नेपालको जीडीपी वृद्धि दर यस आर्थिक वर्ष ६% पुग्ने विश्व बैंकको प्रक्षेपण",
-        description: "विश्व बैंकले नेपालको आर्थिक वृद्धि दर चालू आर्थिक वर्षमा ६ प्रतिशत पुग्ने प्रक्षेपण गरेको छ। आयात प्रतिबन्ध हटाइएको र पर्यटन क्षेत्रमा सुधार आएसँगै अर्थतन्त्रमा सकारात्मक संकेत देखिएको छ।"
+        description: "विश्व बैंकले नेपालको आर्थिक वृद्धि दर चालू आर्थिक वर्षमा ६ प्रतिशत रहने प्रक्षेपण गरेको छ।"
     },
     {
-        source: "Setopati", category: "मौसम",
+        source: "Setopati", 
+        category: "मौसम",
         link: "https://www.setopati.com",
         title: "यस वर्ष मनसुन सामान्य रहने मौसम विभागको पूर्वानुमान",
-        description: "जलविज्ञान तथा मौसम विज्ञान विभागले यस वर्षको मनसुन सामान्य रहने पूर्वानुमान गरेको छ। यसले देशभरका किसानहरूलाई राहत दिएको छ।"
+        description: "जलविज्ञान तथा मौसम विज्ञान विभागले यस वर्षको मनसुन सामान्य रहने पूर्वानुमान गरेको छ।"
     },
     {
-        source: "Unknown Source", category: "संदिग्ध",
+        source: "Unknown Source", 
+        category: "संदिग्ध",
         link: "#",
-        title: "नेपाल सरकार दिवालिया! विदेशी बैंकहरूले ऋण फिर्ता माग्दै — अर्थमन्त्री फरार",
-        description: "SHOCKING: नेपालको राष्ट्रिय खजाना खाली भएको गोप्य दस्तावेज सार्वजनिक भयो। अर्थमन्त्री देश छाडेर फरार रहेको स्रोतले जनाएको छ।"
+        title: "नेपाल सरकार दिवालिया! विदेशी बैंकहरूले ऋण फिर्ता माग्दै",
+        description: "SHOCKING: नेपालको राष्ट्रिय खजाना खाली भएको गोप्य दस्तावेज सार्वजनिक भयो।"
     }
 ];
-
-const DISPLAY_NEWS_COUNT = 10;
-let currentNews = [];
-
-function shuffleArray(array) {
-    const copied = array.slice();
-    for (let i = copied.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [copied[i], copied[j]] = [copied[j], copied[i]];
-    }
-    return copied;
-}
-
-function getRandomNews(count = DISPLAY_NEWS_COUNT) {
-    const shuffled = shuffleArray(MOCK_NEWS);
-    return shuffled.slice(0, Math.min(count, shuffled.length));
-}
-
-function getFreshNewsFeed() {
-    currentNews = getRandomNews();
-    return currentNews;
-}
 
 // ── DOM ──
 const loginPage    = document.getElementById('login-page');
@@ -229,8 +210,6 @@ const scanResultContainer = document.getElementById('scan-result-container');
 const trendingContainer   = document.getElementById('trending-container');
 
 // ── Init ──
-function init() {
-    updateSyncTime();
 function init() {
     updateSyncTime();
     updateNepaliDate();
