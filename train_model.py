@@ -104,7 +104,9 @@ def train(
     use_sublinear_tf: bool,
     remove_duplicates: bool,
     shuffle_data: bool,
+    max_iter: int,
     save_metadata: bool,
+    save_sample: bool,
     verbose: bool,
 ):
     print("Starting model training...")
@@ -141,7 +143,7 @@ def train(
             ),
             (
                 "clf",
-                LogisticRegression(max_iter=2000, class_weight=class_weight),
+                LogisticRegression(max_iter=max_iter, class_weight=class_weight),
             ),
         ]
     )
@@ -226,6 +228,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--save-sample", action="store_true", help="Save a sample of cleaned dataset to outputs/sample_data.csv.")
     parser.add_argument("--shuffle-data", action="store_true", help="Shuffle train/test splitting.")
     parser.add_argument("--outdir", type=Path, default=OUTPUT_DIR, help="Output directory for saved model artifacts.")
+    parser.add_argument("--max-iter", type=int, default=2000, help="Maximum number of iterations for Logistic Regression.")
     parser.add_argument("--test-size", type=float, default=0.2, help="Fraction of data to reserve for testing.")
     parser.add_argument("--random-state", type=int, default=42, help="Random seed for train/test split.")
     return parser.parse_args()
@@ -249,6 +252,7 @@ if __name__ == "__main__":
         use_sublinear_tf=not args.disable_sublinear_tf,
         remove_duplicates=args.remove_duplicates,
         shuffle_data=args.shuffle_data,
+        max_iter=args.max_iter,
         save_metadata=args.save_metadata,
         save_sample=args.save_sample,
         verbose=args.verbose,
