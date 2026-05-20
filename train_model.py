@@ -186,10 +186,17 @@ def train(
             "ngram_range": list(ngram_range),
             "use_sublinear_tf": use_sublinear_tf,
             "remove_duplicates": remove_duplicates,
+            "shuffle_data": shuffle_data,
         }
         with metadata_path.open("w", encoding="utf-8") as metadata_file:
             json.dump(metadata, metadata_file, ensure_ascii=False, indent=2)
         print(f"Saved metadata to {metadata_path}")
+
+    if save_sample:
+        sample_path = outdir / "sample_data.csv"
+        sample_df = df.sample(n=min(5, len(df)), random_state=random_state)
+        sample_df.to_csv(sample_path, index=False, encoding="utf-8")
+        print(f"Saved sample dataset to {sample_path}")
 
     print(f"Saved metrics to {metrics_path}")
     print(f"Saved classification report to {text_report_path}")
@@ -216,6 +223,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--disable-sublinear-tf", action="store_true", help="Disable sublinear TF scaling in TF-IDF.")
     parser.add_argument("--remove-duplicates", action="store_true", help="Drop duplicate text samples before training.")
     parser.add_argument("--save-metadata", action="store_true", help="Save training metadata to outputs/metadata.json.")
+    parser.add_argument("--save-sample", action="store_true", help="Save a sample of cleaned dataset to outputs/sample_data.csv.")
     parser.add_argument("--shuffle-data", action="store_true", help="Shuffle train/test splitting.")
     parser.add_argument("--outdir", type=Path, default=OUTPUT_DIR, help="Output directory for saved model artifacts.")
     parser.add_argument("--test-size", type=float, default=0.2, help="Fraction of data to reserve for testing.")
@@ -242,5 +250,6 @@ if __name__ == "__main__":
         remove_duplicates=args.remove_duplicates,
         shuffle_data=args.shuffle_data,
         save_metadata=args.save_metadata,
+        save_sample=args.save_sample,
         verbose=args.verbose,
     )
