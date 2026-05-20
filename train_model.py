@@ -107,6 +107,7 @@ def train(
     max_iter: int,
     save_metadata: bool,
     save_sample: bool,
+    artifact_prefix: str,
     verbose: bool,
 ):
     print("Starting model training...")
@@ -159,21 +160,22 @@ def train(
     print("\nClassification Report:")
     print(report_text)
 
+    prefix = f"{artifact_prefix}_" if artifact_prefix else ""
     print(f"Saving artifacts to {outdir}")
-    joblib.dump(pipeline, outdir / "pipeline.joblib")
-    joblib.dump(pipeline.named_steps["clf"], outdir / "model.joblib")
-    joblib.dump(pipeline.named_steps["tfidf"], outdir / "vectorizer.joblib")
+    joblib.dump(pipeline, outdir / f"{prefix}pipeline.joblib")
+    joblib.dump(pipeline.named_steps["clf"], outdir / f"{prefix}model.joblib")
+    joblib.dump(pipeline.named_steps["tfidf"], outdir / f"{prefix}vectorizer.joblib")
 
-    metrics_path = outdir / "metrics.json"
+    metrics_path = outdir / f"{prefix}metrics.json"
     with metrics_path.open("w", encoding="utf-8") as metrics_file:
         json.dump({"accuracy": acc, "classification_report": report}, metrics_file, ensure_ascii=False, indent=2)
 
-    text_report_path = outdir / "classification_report.txt"
+    text_report_path = outdir / f"{prefix}classification_report.txt"
     with text_report_path.open("w", encoding="utf-8") as report_file:
         report_file.write(report_text)
 
     if save_metadata:
-        metadata_path = outdir / "metadata.json"
+        metadata_path = outdir / f"{prefix}metadata.json"
         metadata = {
             "real_path": str(real_path),
             "fake_path": str(fake_path),
@@ -189,13 +191,15 @@ def train(
             "use_sublinear_tf": use_sublinear_tf,
             "remove_duplicates": remove_duplicates,
             "shuffle_data": shuffle_data,
+            "max_iter": max_iter,
+            "artifact_prefix": artifact_prefix,
         }
         with metadata_path.open("w", encoding="utf-8") as metadata_file:
             json.dump(metadata, metadata_file, ensure_ascii=False, indent=2)
         print(f"Saved metadata to {metadata_path}")
 
     if save_sample:
-        sample_path = outdir / "sample_data.csv"
+        sample_path = outdir / f"{prefix}sample_data.csv"
         sample_df = df.sample(n=min(5, len(df)), random_state=random_state)
         sample_df.to_csv(sample_path, index=False, encoding="utf-8")
         print(f"Saved sample dataset to {sample_path}")
@@ -227,6 +231,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--save-metadata", action="store_true", help="Save training metadata to outputs/metadata.json.")
     parser.add_argument("--save-sample", action="store_true", help="Save a sample of cleaned dataset to outputs/sample_data.csv.")
     parser.add_argument("--shuffle-data", action="store_true", help="Shuffle train/test splitting.")
+    parser.add_argument("--artifact-prefix", type=str, default="", help="Prefix to add to saved artifact filenames.")
     parser.add_argument("--outdir", type=Path, default=OUTPUT_DIR, help="Output directory for saved model artifacts.")
     parser.add_argument("--max-iter", type=int, default=2000, help="Maximum number of iterations for Logistic Regression.")
     parser.add_argument("--test-size", type=float, default=0.2, help="Fraction of data to reserve for testing.")
@@ -255,5 +260,6 @@ if __name__ == "__main__":
         max_iter=args.max_iter,
         save_metadata=args.save_metadata,
         save_sample=args.save_sample,
+        artifact_prefix=args.artifact_prefix,
         verbose=args.verbose,
     )
