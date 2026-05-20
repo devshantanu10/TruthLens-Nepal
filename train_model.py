@@ -65,11 +65,27 @@ def load_dataset(real_path: Path, fake_path: Path, text_col: str, title_col: str
     return df
 
 
-def train(real_path: Path, fake_path: Path, text_col: str, title_col: str | None, outdir: Path, test_size: float, random_state: int, use_stop_words: bool, class_weight: str | None):
+def train(
+    real_path: Path,
+    fake_path: Path,
+    text_col: str,
+    title_col: str | None,
+    outdir: Path,
+    test_size: float,
+    random_state: int,
+    use_stop_words: bool,
+    class_weight: str | None,
+    verbose: bool,
+):
     print("Starting model training...")
     outdir.mkdir(parents=True, exist_ok=True)
 
     df = load_dataset(real_path, fake_path, text_col, title_col)
+    if verbose:
+        print("Dataset label distribution:")
+        print(df["label"].value_counts().to_dict())
+        print("Sample cleaned texts:")
+        print(df["text"].head(3).to_list())
     print(f"Loaded dataset with {len(df)} rows.")
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -137,6 +153,7 @@ def parse_args() -> argparse.Namespace:
         default="balanced",
         help="Choose class_weight strategy for Logistic Regression.",
     )
+    parser.add_argument("--verbose", action="store_true", help="Show dataset and training debug information.")
     parser.add_argument("--outdir", type=Path, default=OUTPUT_DIR, help="Output directory for saved model artifacts.")
     parser.add_argument("--test-size", type=float, default=0.2, help="Fraction of data to reserve for testing.")
     parser.add_argument("--random-state", type=int, default=42, help="Random seed for train/test split.")
@@ -155,4 +172,5 @@ if __name__ == "__main__":
         random_state=args.random_state,
         use_stop_words=args.use_stop_words,
         class_weight=None if args.class_weight == "none" else "balanced",
+        verbose=args.verbose,
     )
