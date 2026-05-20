@@ -52,6 +52,14 @@ def parse_ngram_range(value: str) -> tuple[int, int]:
     return first, second
 
 
+def validate_dataset(df: pd.DataFrame, name: str, required_cols: list[str]) -> None:
+    missing = [col for col in required_cols if col not in df.columns]
+    if missing:
+        raise ValueError(f"Dataset '{name}' is missing required columns: {', '.join(missing)}")
+    if df.empty:
+        raise ValueError(f"Dataset '{name}' is empty after loading.")
+
+
 def load_dataset(real_path: Path, fake_path: Path, text_col: str, title_col: str | None, min_text_length: int = 5, remove_duplicates: bool = False) -> pd.DataFrame:
     if not real_path.exists():
         raise FileNotFoundError(f"Real data file not found: {real_path}")
@@ -60,6 +68,9 @@ def load_dataset(real_path: Path, fake_path: Path, text_col: str, title_col: str
 
     real_df = pd.read_csv(real_path, encoding="utf-8")
     fake_df = pd.read_csv(fake_path, encoding="utf-8")
+
+    validate_dataset(real_df, "real", [text_col] + ([title_col] if title_col else []))
+    validate_dataset(fake_df, "fake", [text_col] + ([title_col] if title_col else []))
 
     real_df["label"] = 0
     fake_df["label"] = 1
