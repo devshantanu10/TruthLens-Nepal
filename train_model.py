@@ -65,7 +65,7 @@ def load_dataset(real_path: Path, fake_path: Path, text_col: str, title_col: str
     return df
 
 
-def train(real_path: Path, fake_path: Path, text_col: str, title_col: str | None, outdir: Path, test_size: float, random_state: int, use_stop_words: bool):
+def train(real_path: Path, fake_path: Path, text_col: str, title_col: str | None, outdir: Path, test_size: float, random_state: int, use_stop_words: bool, class_weight: str | None):
     print("Starting model training...")
     outdir.mkdir(parents=True, exist_ok=True)
 
@@ -88,7 +88,10 @@ def train(real_path: Path, fake_path: Path, text_col: str, title_col: str | None
                     stop_words="english" if use_stop_words else None,
                 ),
             ),
-            ("clf", LogisticRegression(max_iter=2000, class_weight="balanced")),
+            (
+                "clf",
+                LogisticRegression(max_iter=2000, class_weight=class_weight),
+            ),
         ]
     )
 
@@ -128,6 +131,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--text-col", type=str, default="text", help="Name of the text column in the dataset.")
     parser.add_argument("--title-col", type=str, default="title", help="Optional title column to concatenate with text.")
     parser.add_argument("--use-stop-words", action="store_true", help="Enable English stop-word removal in TF-IDF.")
+    parser.add_argument(
+        "--class-weight",
+        choices=["balanced", "none"],
+        default="balanced",
+        help="Choose class_weight strategy for Logistic Regression.",
+    )
     parser.add_argument("--outdir", type=Path, default=OUTPUT_DIR, help="Output directory for saved model artifacts.")
     parser.add_argument("--test-size", type=float, default=0.2, help="Fraction of data to reserve for testing.")
     parser.add_argument("--random-state", type=int, default=42, help="Random seed for train/test split.")
@@ -145,4 +154,5 @@ if __name__ == "__main__":
         test_size=args.test_size,
         random_state=args.random_state,
         use_stop_words=args.use_stop_words,
+        class_weight=None if args.class_weight == "none" else "balanced",
     )
