@@ -1,82 +1,135 @@
-import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
-from sklearn.pipeline import Pipeline
-from sklearn.metrics import accuracy_score, classification_report
-import joblib
+import argparse
+import json
 import re
 from pathlib import Path
 
-# Paths
-DATA_DIR = Path("data")
-OUTPUT_DIR = Path("outputs")
+import joblib
+import numpy as np
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+
+ROOT_DIR = Path(__file__).resolve().parent
+DATA_DIR = ROOT_DIR / "data"
+OUTPUT_DIR = ROOT_DIR / "outputs"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
-def clean_text(text):
-    if not isinstance(text, str): return ""
+
+def clean_text(text: str) -> str:
+    if not isinstance(text, str):
+        return ""
     text = text.lower()
-    # Keep Devanagari (Nepali) and English characters
-    text = re.sub(r"[^\u0900-\u097Fa-z\s]", " ", text)
+    text = re.sub(r"[^\u0900-\u097Fa-z0-9\s]", " ", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
-def train():
-    print("Starting Model Training...")
-    
-    # Load datasets
-    try:
-        fake_df = pd.read_csv(DATA_DIR / "Fake.csv")
-        true_df = pd.read_csv(DATA_DIR / "True.csv")
-    except Exception as e:
-        print(f"Error loading data: {e}")
-        return
 
-    # Label data
-    fake_df['label'] = 1
-    true_df['label'] = 0
-    
-    # Combine
-    df = pd.concat([fake_df, true_df]).reset_index(drop=True)
-    
-    # Handle missing values
-    df = df[['text', 'label']].dropna()
-    
-    print(f"Dataset size: {len(df)} rows")
-    
-    # Cleaning
-    print("Cleaning text...")
-    df['text'] = df['text'].apply(clean_text)
-    
-    # Split
-    X_train, X_test, y_train, y_test = train_test_split(df['text'], df['label'], test_size=0.2, random_state=42)
-    
-    # Pipeline: TF-IDF + Logistic Regression
-    print("Training model (TF-IDF + Logistic Regression)...")
-    pipeline = Pipeline([
-        ('tfidf', TfidfVectorizer(max_features=10000, stop_words='english', ngram_range=(1,2))),
-        ('clf', LogisticRegression(max_iter=1000))
-    ])
-    
+def build_text_series(df: pd.DataFrame, text_col: str, title_col: str | None = None) -> pd.Series:
+    if text_col not in df.columns and not title_col:
+        raise ValueError(f"Text column '{text_col}' not found in dataset and no title column provided.")
+
+    if title_col and title_col in df.columns:
+        title = df[title_col].fillna("").astype(str)
+        body = df[text_col].fillna("").astype(str) if text_col in df.columns else pd.Series([""] * len(df))
+        return (title + " " + body).str.strip()
+
+    if text_col not in df.columns:
+        raise ValueError(f"Text column '{text_col}' not found in dataset.")
+
+    return df[text_col].fillna("").astype(str)
+
+
+def load_dataset(real_path: Path, fake_path: Path, text_col: str, title_col: str | None) -> pd.DataFrame:
+    if not real_path.exists():
+        raise FileNotFoundError(f"Real data file not found: {real_path}")
+    if not fake_path.exists():
+        raise FileNotFoundError(f"Fake data file not found: {fake_path}")
+
+    real_df = pd.read_csv(real_path, encoding="utf-8")
+    fake_df = pd.read_csv(fake_path, encoding="utf-8")
+
+    real_df["label"] = 0
+    fake_df["label"] = 1
+
+    real_df["text"] = build_text_series(real_df, text_col, title_col)
+    fake_df["text"] = build_text_series(fake_df, text_col, title_col)
+
+    df = pd.concat([real_df[["text", "label"]], fake_df[["text", "label"]]], ignore_index=True)
+    df = df.dropna(subset=["text", "label"])
+    df["text"] = df["text"].map(clean_text)
+    df = df[df["text"].str.len() > 5].reset_index(drop=True)
+
+    return df
+
+
+def train(real_path: Path, fake_path: Path, text_col: str, title_col: str | None, outdir: Path, test_size: float, random_state: int):
+    print("Starting model training...")
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    df = load_dataset(real_path, fake_path, text_col, title_col)
+    print(f"Loaded dataset with {len(df)} rows.")
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        df["text"], df["label"], test_size=test_size, stratify=df["label"], random_state=random_state
+    )
+
+    print("Training model using TF-IDF and Logistic Regression...")
+    pipeline = Pipeline(
+        [
+            (
+                "tfidf",
+                TfidfVectorizer(max_features=15000, ngram_range=(1, 2), sublinear_tf=True),
+            ),
+            ("clf", LogisticRegression(max_iter=2000, class_weight="balanced")),
+        ]
+    )
+
     pipeline.fit(X_train, y_train)
-    
-    # Evaluate
+
     y_pred = pipeline.predict(X_test)
     acc = accuracy_score(y_test, y_pred)
-    print(f"Training Complete! Accuracy: {acc:.2%}")
+    report = classification_report(y_test, y_pred, output_dict=True)
+
+    print(f"Training complete. Accuracy: {acc:.2%}")
     print("\nClassification Report:")
     print(classification_report(y_test, y_pred))
-    
-    # Save
-    print(f"Saving model to {OUTPUT_DIR}...")
-    joblib.dump(pipeline, OUTPUT_DIR / "pipeline.joblib")
-    
-    # Split save for app compatibility if needed
-    joblib.dump(pipeline.named_steps['clf'], OUTPUT_DIR / "model.joblib")
-    joblib.dump(pipeline.named_steps['tfidf'], OUTPUT_DIR / "vectorizer.joblib")
-    
+
+    print(f"Saving artifacts to {outdir}")
+    joblib.dump(pipeline, outdir / "pipeline.joblib")
+    joblib.dump(pipeline.named_steps["clf"], outdir / "model.joblib")
+    joblib.dump(pipeline.named_steps["tfidf"], outdir / "vectorizer.joblib")
+
+    metrics_path = outdir / "metrics.json"
+    with metrics_path.open("w", encoding="utf-8") as metrics_file:
+        json.dump({"accuracy": acc, "classification_report": report}, metrics_file, ensure_ascii=False, indent=2)
+
+    print(f"Saved metrics to {metrics_path}")
     print("All artifacts saved successfully!")
 
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Train a fake news detector for Nepali datasets.")
+    parser.add_argument("--real", type=Path, default=DATA_DIR / "True.csv", help="Path to the real news CSV file.")
+    parser.add_argument("--fake", type=Path, default=DATA_DIR / "Fake.csv", help="Path to the fake news CSV file.")
+    parser.add_argument("--text-col", type=str, default="text", help="Name of the text column in the dataset.")
+    parser.add_argument("--title-col", type=str, default="title", help="Optional title column to concatenate with text.")
+    parser.add_argument("--outdir", type=Path, default=OUTPUT_DIR, help="Output directory for saved model artifacts.")
+    parser.add_argument("--test-size", type=float, default=0.2, help="Fraction of data to reserve for testing.")
+    parser.add_argument("--random-state", type=int, default=42, help="Random seed for train/test split.")
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    train()
+    args = parse_args()
+    train(
+        real_path=args.real,
+        fake_path=args.fake,
+        text_col=args.text_col,
+        title_col=args.title_col,
+        outdir=args.outdir,
+        test_size=args.test_size,
+        random_state=args.random_state,
+    )
