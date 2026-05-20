@@ -42,6 +42,16 @@ def build_text_series(df: pd.DataFrame, text_col: str, title_col: str | None = N
     return df[text_col].fillna("").astype(str)
 
 
+def parse_ngram_range(value: str) -> tuple[int, int]:
+    parts = [part.strip() for part in value.split(",") if part.strip()]
+    if len(parts) != 2:
+        raise argparse.ArgumentTypeError("ngram range must be provided as two integers separated by a comma, e.g. 1,2")
+    first, second = int(parts[0]), int(parts[1])
+    if first < 1 or second < first:
+        raise argparse.ArgumentTypeError("ngram range must be two positive integers with min <= max")
+    return first, second
+
+
 def load_dataset(real_path: Path, fake_path: Path, text_col: str, title_col: str | None, min_text_length: int = 5) -> pd.DataFrame:
     if not real_path.exists():
         raise FileNotFoundError(f"Real data file not found: {real_path}")
@@ -77,6 +87,7 @@ def train(
     class_weight: str | None,
     min_text_length: int,
     max_features: int,
+    ngram_range: tuple[int, int],
     verbose: bool,
 ):
     print("Starting model training...")
@@ -101,7 +112,7 @@ def train(
                 "tfidf",
                 TfidfVectorizer(
                     max_features=max_features,
-                    ngram_range=(1, 2),
+                    ngram_range=ngram_range,
                     sublinear_tf=True,
                     stop_words="english" if use_stop_words else None,
                 ),
@@ -158,6 +169,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--verbose", action="store_true", help="Show dataset and training debug information.")
     parser.add_argument("--min-text-length", type=int, default=5, help="Minimum length for text samples after cleaning.")
     parser.add_argument("--max-features", type=int, default=15000, help="Maximum number of TF-IDF features to extract.")
+    parser.add_argument("--ngram-range", type=parse_ngram_range, default="1,2", help="N-gram range for TF-IDF as 'min,max'.")
     parser.add_argument("--outdir", type=Path, default=OUTPUT_DIR, help="Output directory for saved model artifacts.")
     parser.add_argument("--test-size", type=float, default=0.2, help="Fraction of data to reserve for testing.")
     parser.add_argument("--random-state", type=int, default=42, help="Random seed for train/test split.")
@@ -178,5 +190,6 @@ if __name__ == "__main__":
         class_weight=None if args.class_weight == "none" else "balanced",
         min_text_length=args.min_text_length,
         max_features=args.max_features,
+        ngram_range=args.ngram_range,
         verbose=args.verbose,
     )
