@@ -92,6 +92,7 @@ def train(
     ngram_range: tuple[int, int],
     use_sublinear_tf: bool,
     remove_duplicates: bool,
+    save_metadata: bool,
     verbose: bool,
 ):
     print("Starting model training...")
@@ -152,6 +153,27 @@ def train(
     with text_report_path.open("w", encoding="utf-8") as report_file:
         report_file.write(report_text)
 
+    if save_metadata:
+        metadata_path = outdir / "metadata.json"
+        metadata = {
+            "real_path": str(real_path),
+            "fake_path": str(fake_path),
+            "text_col": text_col,
+            "title_col": title_col,
+            "test_size": test_size,
+            "random_state": random_state,
+            "use_stop_words": use_stop_words,
+            "class_weight": class_weight,
+            "min_text_length": min_text_length,
+            "max_features": max_features,
+            "ngram_range": list(ngram_range),
+            "use_sublinear_tf": use_sublinear_tf,
+            "remove_duplicates": remove_duplicates,
+        }
+        with metadata_path.open("w", encoding="utf-8") as metadata_file:
+            json.dump(metadata, metadata_file, ensure_ascii=False, indent=2)
+        print(f"Saved metadata to {metadata_path}")
+
     print(f"Saved metrics to {metrics_path}")
     print(f"Saved classification report to {text_report_path}")
     print("All artifacts saved successfully!")
@@ -176,6 +198,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ngram-range", type=parse_ngram_range, default="1,2", help="N-gram range for TF-IDF as 'min,max'.")
     parser.add_argument("--disable-sublinear-tf", action="store_true", help="Disable sublinear TF scaling in TF-IDF.")
     parser.add_argument("--remove-duplicates", action="store_true", help="Drop duplicate text samples before training.")
+    parser.add_argument("--save-metadata", action="store_true", help="Save training metadata to outputs/metadata.json.")
     parser.add_argument("--outdir", type=Path, default=OUTPUT_DIR, help="Output directory for saved model artifacts.")
     parser.add_argument("--test-size", type=float, default=0.2, help="Fraction of data to reserve for testing.")
     parser.add_argument("--random-state", type=int, default=42, help="Random seed for train/test split.")
@@ -199,5 +222,6 @@ if __name__ == "__main__":
         ngram_range=args.ngram_range,
         use_sublinear_tf=not args.disable_sublinear_tf,
         remove_duplicates=args.remove_duplicates,
+        save_metadata=args.save_metadata,
         verbose=args.verbose,
     )
