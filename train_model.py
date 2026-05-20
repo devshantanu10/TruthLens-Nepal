@@ -92,10 +92,11 @@ def train(real_path: Path, fake_path: Path, text_col: str, title_col: str | None
     y_pred = pipeline.predict(X_test)
     acc = accuracy_score(y_test, y_pred)
     report = classification_report(y_test, y_pred, output_dict=True)
+    report_text = classification_report(y_test, y_pred)
 
     print(f"Training complete. Accuracy: {acc:.2%}")
     print("\nClassification Report:")
-    print(classification_report(y_test, y_pred))
+    print(report_text)
 
     print(f"Saving artifacts to {outdir}")
     joblib.dump(pipeline, outdir / "pipeline.joblib")
@@ -106,7 +107,12 @@ def train(real_path: Path, fake_path: Path, text_col: str, title_col: str | None
     with metrics_path.open("w", encoding="utf-8") as metrics_file:
         json.dump({"accuracy": acc, "classification_report": report}, metrics_file, ensure_ascii=False, indent=2)
 
+    text_report_path = outdir / "classification_report.txt"
+    with text_report_path.open("w", encoding="utf-8") as report_file:
+        report_file.write(report_text)
+
     print(f"Saved metrics to {metrics_path}")
+    print(f"Saved classification report to {text_report_path}")
     print("All artifacts saved successfully!")
 
 
