@@ -42,7 +42,7 @@ def build_text_series(df: pd.DataFrame, text_col: str, title_col: str | None = N
     return df[text_col].fillna("").astype(str)
 
 
-def load_dataset(real_path: Path, fake_path: Path, text_col: str, title_col: str | None) -> pd.DataFrame:
+def load_dataset(real_path: Path, fake_path: Path, text_col: str, title_col: str | None, min_text_length: int = 5) -> pd.DataFrame:
     if not real_path.exists():
         raise FileNotFoundError(f"Real data file not found: {real_path}")
     if not fake_path.exists():
@@ -60,7 +60,7 @@ def load_dataset(real_path: Path, fake_path: Path, text_col: str, title_col: str
     df = pd.concat([real_df[["text", "label"]], fake_df[["text", "label"]]], ignore_index=True)
     df = df.dropna(subset=["text", "label"])
     df["text"] = df["text"].map(clean_text)
-    df = df[df["text"].str.len() > 5].reset_index(drop=True)
+    df = df[df["text"].str.len() >= min_text_length].reset_index(drop=True)
 
     return df
 
@@ -75,12 +75,13 @@ def train(
     random_state: int,
     use_stop_words: bool,
     class_weight: str | None,
+    min_text_length: int,
     verbose: bool,
 ):
     print("Starting model training...")
     outdir.mkdir(parents=True, exist_ok=True)
 
-    df = load_dataset(real_path, fake_path, text_col, title_col)
+    df = load_dataset(real_path, fake_path, text_col, title_col, min_text_length)
     if verbose:
         print("Dataset label distribution:")
         print(df["label"].value_counts().to_dict())
@@ -154,6 +155,7 @@ def parse_args() -> argparse.Namespace:
         help="Choose class_weight strategy for Logistic Regression.",
     )
     parser.add_argument("--verbose", action="store_true", help="Show dataset and training debug information.")
+    parser.add_argument("--min-text-length", type=int, default=5, help="Minimum length for text samples after cleaning.")
     parser.add_argument("--outdir", type=Path, default=OUTPUT_DIR, help="Output directory for saved model artifacts.")
     parser.add_argument("--test-size", type=float, default=0.2, help="Fraction of data to reserve for testing.")
     parser.add_argument("--random-state", type=int, default=42, help="Random seed for train/test split.")
@@ -172,5 +174,6 @@ if __name__ == "__main__":
         random_state=args.random_state,
         use_stop_words=args.use_stop_words,
         class_weight=None if args.class_weight == "none" else "balanced",
+        min_text_length=args.min_text_length,
         verbose=args.verbose,
     )
