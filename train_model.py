@@ -52,7 +52,7 @@ def parse_ngram_range(value: str) -> tuple[int, int]:
     return first, second
 
 
-def load_dataset(real_path: Path, fake_path: Path, text_col: str, title_col: str | None, min_text_length: int = 5) -> pd.DataFrame:
+def load_dataset(real_path: Path, fake_path: Path, text_col: str, title_col: str | None, min_text_length: int = 5, remove_duplicates: bool = False) -> pd.DataFrame:
     if not real_path.exists():
         raise FileNotFoundError(f"Real data file not found: {real_path}")
     if not fake_path.exists():
@@ -70,6 +70,8 @@ def load_dataset(real_path: Path, fake_path: Path, text_col: str, title_col: str
     df = pd.concat([real_df[["text", "label"]], fake_df[["text", "label"]]], ignore_index=True)
     df = df.dropna(subset=["text", "label"])
     df["text"] = df["text"].map(clean_text)
+    if remove_duplicates:
+        df = df.drop_duplicates(subset=["text"]).reset_index(drop=True)
     df = df[df["text"].str.len() >= min_text_length].reset_index(drop=True)
 
     return df
@@ -89,6 +91,7 @@ def train(
     max_features: int,
     ngram_range: tuple[int, int],
     use_sublinear_tf: bool,
+    remove_duplicates: bool,
     verbose: bool,
 ):
     print("Starting model training...")
@@ -172,6 +175,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-features", type=int, default=15000, help="Maximum number of TF-IDF features to extract.")
     parser.add_argument("--ngram-range", type=parse_ngram_range, default="1,2", help="N-gram range for TF-IDF as 'min,max'.")
     parser.add_argument("--disable-sublinear-tf", action="store_true", help="Disable sublinear TF scaling in TF-IDF.")
+    parser.add_argument("--remove-duplicates", action="store_true", help="Drop duplicate text samples before training.")
     parser.add_argument("--outdir", type=Path, default=OUTPUT_DIR, help="Output directory for saved model artifacts.")
     parser.add_argument("--test-size", type=float, default=0.2, help="Fraction of data to reserve for testing.")
     parser.add_argument("--random-state", type=int, default=42, help="Random seed for train/test split.")
@@ -194,5 +198,6 @@ if __name__ == "__main__":
         max_features=args.max_features,
         ngram_range=args.ngram_range,
         use_sublinear_tf=not args.disable_sublinear_tf,
+        remove_duplicates=args.remove_duplicates,
         verbose=args.verbose,
     )
