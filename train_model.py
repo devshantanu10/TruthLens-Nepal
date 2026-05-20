@@ -92,6 +92,7 @@ def train(
     ngram_range: tuple[int, int],
     use_sublinear_tf: bool,
     remove_duplicates: bool,
+    shuffle_data: bool,
     save_metadata: bool,
     verbose: bool,
 ):
@@ -107,7 +108,12 @@ def train(
     print(f"Loaded dataset with {len(df)} rows.")
 
     X_train, X_test, y_train, y_test = train_test_split(
-        df["text"], df["label"], test_size=test_size, stratify=df["label"], random_state=random_state
+        df["text"],
+        df["label"],
+        test_size=test_size,
+        stratify=df["label"],
+        random_state=random_state,
+        shuffle=shuffle_data,
     )
 
     print("Training model using TF-IDF and Logistic Regression...")
@@ -199,6 +205,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--disable-sublinear-tf", action="store_true", help="Disable sublinear TF scaling in TF-IDF.")
     parser.add_argument("--remove-duplicates", action="store_true", help="Drop duplicate text samples before training.")
     parser.add_argument("--save-metadata", action="store_true", help="Save training metadata to outputs/metadata.json.")
+    parser.add_argument("--shuffle-data", action="store_true", help="Shuffle train/test splitting.")
     parser.add_argument("--outdir", type=Path, default=OUTPUT_DIR, help="Output directory for saved model artifacts.")
     parser.add_argument("--test-size", type=float, default=0.2, help="Fraction of data to reserve for testing.")
     parser.add_argument("--random-state", type=int, default=42, help="Random seed for train/test split.")
@@ -222,6 +229,7 @@ if __name__ == "__main__":
         ngram_range=args.ngram_range,
         use_sublinear_tf=not args.disable_sublinear_tf,
         remove_duplicates=args.remove_duplicates,
+        shuffle_data=args.shuffle_data,
         save_metadata=args.save_metadata,
         verbose=args.verbose,
     )
