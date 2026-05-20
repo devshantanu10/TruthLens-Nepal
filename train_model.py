@@ -88,6 +88,7 @@ def train(
     min_text_length: int,
     max_features: int,
     ngram_range: tuple[int, int],
+    use_sublinear_tf: bool,
     verbose: bool,
 ):
     print("Starting model training...")
@@ -113,7 +114,7 @@ def train(
                 TfidfVectorizer(
                     max_features=max_features,
                     ngram_range=ngram_range,
-                    sublinear_tf=True,
+                    sublinear_tf=use_sublinear_tf,
                     stop_words="english" if use_stop_words else None,
                 ),
             ),
@@ -170,6 +171,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--min-text-length", type=int, default=5, help="Minimum length for text samples after cleaning.")
     parser.add_argument("--max-features", type=int, default=15000, help="Maximum number of TF-IDF features to extract.")
     parser.add_argument("--ngram-range", type=parse_ngram_range, default="1,2", help="N-gram range for TF-IDF as 'min,max'.")
+    parser.add_argument("--disable-sublinear-tf", action="store_true", help="Disable sublinear TF scaling in TF-IDF.")
     parser.add_argument("--outdir", type=Path, default=OUTPUT_DIR, help="Output directory for saved model artifacts.")
     parser.add_argument("--test-size", type=float, default=0.2, help="Fraction of data to reserve for testing.")
     parser.add_argument("--random-state", type=int, default=42, help="Random seed for train/test split.")
@@ -191,5 +193,6 @@ if __name__ == "__main__":
         min_text_length=args.min_text_length,
         max_features=args.max_features,
         ngram_range=args.ngram_range,
+        use_sublinear_tf=not args.disable_sublinear_tf,
         verbose=args.verbose,
     )
