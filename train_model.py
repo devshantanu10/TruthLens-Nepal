@@ -76,6 +76,7 @@ def train(
     use_stop_words: bool,
     class_weight: str | None,
     min_text_length: int,
+    max_features: int,
     verbose: bool,
 ):
     print("Starting model training...")
@@ -99,7 +100,7 @@ def train(
             (
                 "tfidf",
                 TfidfVectorizer(
-                    max_features=15000,
+                    max_features=max_features,
                     ngram_range=(1, 2),
                     sublinear_tf=True,
                     stop_words="english" if use_stop_words else None,
@@ -156,6 +157,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--verbose", action="store_true", help="Show dataset and training debug information.")
     parser.add_argument("--min-text-length", type=int, default=5, help="Minimum length for text samples after cleaning.")
+    parser.add_argument("--max-features", type=int, default=15000, help="Maximum number of TF-IDF features to extract.")
     parser.add_argument("--outdir", type=Path, default=OUTPUT_DIR, help="Output directory for saved model artifacts.")
     parser.add_argument("--test-size", type=float, default=0.2, help="Fraction of data to reserve for testing.")
     parser.add_argument("--random-state", type=int, default=42, help="Random seed for train/test split.")
@@ -175,5 +177,6 @@ if __name__ == "__main__":
         use_stop_words=args.use_stop_words,
         class_weight=None if args.class_weight == "none" else "balanced",
         min_text_length=args.min_text_length,
+        max_features=args.max_features,
         verbose=args.verbose,
     )
