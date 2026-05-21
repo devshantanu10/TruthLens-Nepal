@@ -188,28 +188,6 @@ const MOCK_NEWS_FALLBACK = [
     }
 ];
 
-const DISPLAY_NEWS_COUNT = 10;
-let currentNews = [];
-
-function shuffleArray(array) {
-    const copied = array.slice();
-    for (let i = copied.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [copied[i], copied[j]] = [copied[j], copied[i]];
-    }
-    return copied;
-}
-
-function getRandomNews(count = DISPLAY_NEWS_COUNT) {
-    const shuffled = shuffleArray(MOCK_NEWS);
-    return shuffled.slice(0, Math.min(count, shuffled.length));
-}
-
-function getFreshNewsFeed() {
-    currentNews = getRandomNews();
-    return currentNews;
-}
-
 // ── DOM ──
 const loginPage    = document.getElementById('login-page');
 const dashPage     = document.getElementById('dashboard-page');
@@ -231,12 +209,8 @@ const trendingContainer   = document.getElementById('trending-container');
 // ── Init ──
 function init() {
     updateSyncTime();
-function init() {
-    updateSyncTime();
     updateNepaliDate();
-
     fetchLiveNews();
-
     if (state.isAdmin) fetchAdminStats();
 
     setInterval(updateSyncTime, 1000);
