@@ -213,9 +213,7 @@ const trendingContainer   = document.getElementById('trending-container');
 function init() {
     updateSyncTime();
     updateNepaliDate();
-
     fetchLiveNews();
-
     if (state.isAdmin) fetchAdminStats();
 
     setInterval(updateSyncTime, 1000);
