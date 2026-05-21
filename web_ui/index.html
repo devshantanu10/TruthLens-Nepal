@@ -14,22 +14,27 @@
 <!-- ===================== LOGIN PAGE ===================== -->
 <div id="login-page" class="page active animate-fade-in">
 
-    <header class="landing-top">
-        <div class="landing-brand">
-            <div class="logo-emblem"><img src="logo.png" alt="TruthLens Nepal Logo" class="header-logo-img"></div>
-            <div>
-                <span class="eyebrow">TruthLens Nepal</span>
-                <h1>समाचार पढ्नुहोस्, ट्रस्ट सही बनाउनुहोस्</h1>
-                <p>AI-समर्थित Nepali news verification hub जसले वास्तविकता र झूटा दावीबीच तुरुन्तै अन्तर राख्छ।</p>
+    <!-- Top Utility Bar -->
+    <div class="top-bar">
+        <div class="top-bar-inner">
+            <span class="nepali-date" id="nepali-date-login">२०८१ वैशाख २१, आइतवार</span>
+            <div class="top-bar-right">
+                <span><i class="fas fa-thermometer-half"></i> काठमाडौं: २८°C</span>
+                <span class="divider-pipe">|</span>
+                <span>USD: १३३.२५ रु</span>
             </div>
         </div>
-        <nav class="landing-nav">
-            <a href="#news-highlights">समाचार</a>
-            <a href="#features">विशेषताहरू</a>
-            <a href="#login-panel">प्रवेश</a>
-            <button class="nav-action-btn" type="button" onclick="document.getElementById('username').focus();">Login</button>
-        </nav>
-    </header>
+    </div>
+
+    <!-- Login Header -->
+    <div class="login-main-header">
+        <div class="login-logo-area">
+            <div class="logo-emblem"><img src="logo.png" alt="TruthLens Nepal Logo" class="header-logo-img"></div>
+            <div>
+                <h1 class="login-brand">TruthLens <span>Nepal</span></h1>
+                <p class="login-brand-sub">समाचार सत्यापन केन्द्र &nbsp;|&nbsp; AI-Powered Fake News Detector</p>
+            </div>
+        </div>
         <div class="header-trust-badges">
             <span><i class="fas fa-lock"></i> SSL सुरक्षित</span>
             <span><i class="fas fa-robot"></i> AI संचालित</span>
@@ -56,131 +61,79 @@
                 <p>सत्यापन सेवामा पहुँच गर्न लगइन गर्नुहोस्</p>
             </div>
 
-    <section class="hero-grid">
-        <div class="hero-copy">
-            <span class="hero-tag"><i class="fas fa-shield-alt"></i> Live Verification</span>
-            <h2>अन्तर्राष्ट्रिय शैलीको समाचार पोर्टल, तर पुरै नेपाली भरोसा र सुरक्षा साथ</h2>
-            <p>नयाँ समाचार, झूटा दावी अन्वेषण र सटिक सत्यापन अब एकै ठाँउमा। Trendy डिजाइन र तेज अनुभवले प्रयोगकर्तालाई अहिलेको समाचार युगका लागि तयार बनाउँछ।</p>
-            <div class="hero-actions">
-                <button class="hero-btn" type="button" onclick="document.getElementById('username').focus();">अहिले सत्यापन गर्नुहोस्</button>
-                <a class="hero-secondary-btn" href="#news-highlights">समाचार हेर्नुहोस्</a>
+            <div class="portal-selector">
+                <label class="portal-opt">
+                    <input type="radio" name="portal" value="citizen" checked>
+                    <span><i class="fas fa-user"></i> नागरिक पहुँच</span>
+                </label>
+                <label class="portal-opt">
+                    <input type="radio" name="portal" value="admin">
+                    <span><i class="fas fa-shield-alt"></i> प्रशासक</span>
+                </label>
             </div>
-            <div class="hero-stats">
-                <div class="stat-pill"><strong>९२.४%</strong><span>मोडेल शुद्धता</span></div>
-                <div class="stat-pill"><strong>१००+</strong><span>विश्वसनीय स्रोत</span></div>
-                <div class="stat-pill"><strong>LIVE</strong><span>ताजा अलर्ट</span></div>
+
+            <div class="google-btn" role="button" tabindex="0">
+                <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" width="20" alt="Google">
+                Google खाताबाट प्रवेश गर्नुहोस्
+            </div>
+
+            <div class="or-divider"><span>वा इमेलबाट</span></div>
+
+            <h4 id="portal-title">नागरिक पहुँच पोर्टल</h4>
+
+            <form id="login-form">
+                <div class="input-group">
+                    <label>प्रयोगकर्ता नाम / Email</label>
+                    <div class="input-wrap">
+                        <i class="fas fa-user"></i>
+                        <input type="text" id="username" placeholder="ID वा Email लेख्नुहोस्" required>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>पासवर्ड</label>
+                    <div class="input-wrap">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="password" placeholder="सुरक्षा कुञ्जी" required>
+                    </div>
+                </div>
+                <button type="submit" class="primary-btn" id="login-btn">
+                    <i class="fas fa-unlock-alt"></i> प्रवेश गर्नुहोस्
+                </button>
+            </form>
+
+            <div class="login-footer-note">
+                लगइन गरेर तपाईं हाम्रो <b>सत्यनिष्ठा मानक</b>सँग सहमत हुनुहुन्छ।<br>
+                <a href="#">सहायता चाहिन्छ?</a>
             </div>
         </div>
 
-        <div class="hero-panel">
-            <div class="sign-in-card" id="login-panel">
-                <div class="card-flag">Quick Access</div>
-                <div class="login-card-heading">
-                    <h2>प्रवेश / सत्यापन</h2>
-                    <p>तुरुन्तै समाचार पठाउनुहोस् र भरोसा नतिजा पाउनुहोस्।</p>
-                </div>
-
-                <div class="portal-selector">
-                    <label class="portal-opt">
-                        <input type="radio" name="portal" value="citizen" checked>
-                        <span><i class="fas fa-user"></i> नागरिक</span>
-                    </label>
-                    <label class="portal-opt">
-                        <input type="radio" name="portal" value="admin">
-                        <span><i class="fas fa-shield-alt"></i> प्रशासक</span>
-                    </label>
-                </div>
-
-                <form id="login-form">
-                    <div class="input-group">
-                        <label>प्रयोगकर्ता नाम</label>
-                        <div class="input-wrap">
-                            <i class="fas fa-user"></i>
-                            <input type="text" id="username" placeholder="ID वा Email लेख्नुहोस्" required>
-                        </div>
-                    </div>
-                    <div class="input-group">
-                        <label>पासवर्ड</label>
-                        <div class="input-wrap">
-                            <i class="fas fa-lock"></i>
-                            <input type="password" id="password" placeholder="सुरक्षा कुञ्जी" required>
-                        </div>
-                    </div>
-                    <button type="submit" class="primary-btn" id="login-btn">
-                        <i class="fas fa-unlock-alt"></i> प्रवेश गर्नुहोस्
-                    </button>
-                </form>
-                <div class="login-footer-note">Google login coming soon • Trusted AI for Nepali news</div>
+        <!-- Side Info -->
+        <div class="login-side">
+            <div class="side-card">
+                <div class="side-card-icon">🔍</div>
+                <h3>AI विश्लेषण</h3>
+                <p>मशिन लर्निङ प्रविधिले समाचारको सत्यता परीक्षण गर्छ</p>
             </div>
-
-            <div class="news-card-highlight">
-                <div class="news-badge">Featured</div>
-                <h3>नेपालमा डिजिटल अर्बिट्रेज र सामाजिक मिडियामा झूटा खबर रोकथाम</h3>
-                <p>TruthLens ले अब वास्तविकता जाँच टूल र बिजुली छिटो ‘Fake-alert’ प्रणाली सहित सामान्य पाठकका लागि सजिलो बनाएको छ।</p>
-                <div class="news-card-meta">Live feed, AI score, rapid insights</div>
+            <div class="side-card">
+                <div class="side-card-icon">📰</div>
+                <h3>नेपाली स्रोत</h3>
+                <p>OnlineKhabar, Setopati, Kantipur लगायत १०+ स्रोत</p>
             </div>
-        </div>
-    </section>
-
-    <div class="breaking-ticker hero-ticker">
-        <div class="ticker-label"><i class="fas fa-bolt"></i> ताजा</div>
-        <div class="ticker-track">
-            <div class="ticker-scroll">
-                <span>LIVE: काठमाडौंमा ट्राफिक अपडेट • Fake alert: झूटा मुद्दा चलिरहेको छ • AI verified: नयाँ अर्थ नीति रिपोर्ट • नयाँ तथ्याङ्क प्रकाशित • Trend watch: सोशल मिडिया मिथ्या दावीहरू</span>
-                <span>LIVE: काठमाडौंमा ट्राफिक अपडेट • Fake alert: झूटा मुद्दा चलिरहेको छ • AI verified: नयाँ अर्थ नीति रिपोर्ट • नयाँ तथ्याङ्क प्रकाशित • Trend watch: सोशल मिडिया मिथ्या दावीहरू</span>
+            <div class="side-card">
+                <div class="side-card-icon">⚡</div>
+                <h3>तुरुन्त परिणाम</h3>
+                <p>केही सेकेन्डमा विश्वसनीयता स्कोर पाउनुहोस्</p>
+            </div>
+            <div class="login-stats">
+                <div class="login-stat"><span class="ls-num">२,४५०+</span><span class="ls-lbl">समाचार विश्लेषण</span></div>
+                <div class="login-stat"><span class="ls-num">९२.४%</span><span class="ls-lbl">शुद्धता</span></div>
+                <div class="login-stat"><span class="ls-num">१०+</span><span class="ls-lbl">स्रोतहरू</span></div>
             </div>
         </div>
     </div>
 
-    <section class="feature-strip" id="features">
-        <div class="feature-card">
-            <span class="feature-icon">🧠</span>
-            <h4>AI-Powered</h4>
-            <p>नेपाली र अन्तर्राष्ट्रिय समाचारमा तुरुन्त विश्लेषण।</p>
-        </div>
-        <div class="feature-card">
-            <span class="feature-icon">🚀</span>
-            <h4>Trend-Ready</h4>
-            <p>फास्ट अपडेट, त्वरित अलर्ट र Gen-Z अनुकूल UI।</p>
-        </div>
-        <div class="feature-card">
-            <span class="feature-icon">🔔</span>
-            <h4>Trusted Alerts</h4>
-            <p>संदिग्ध सामग्री पहिचान र रिपोर्टिंग सहज।</p>
-        </div>
-    </section>
-
-    <section class="news-highlights" id="news-highlights">
-        <div class="section-hdr">
-            <h2>ताजा समाचारहरू</h2>
-            <p>मुख्य समाचार हेडलाइनहरू र झूटा सूचना चेतावनीहरू एकै ठाउँमा।</p>
-        </div>
-        <div class="news-grid">
-            <article class="news-card mini-card">
-                <span class="cat-badge mini">Politics</span>
-                <h3>संसदमा नयाँ डिजिटल मिडिया नीति प्रस्ताव गरिएको छ</h3>
-                <p>प्रतिनिधि सभा रचनात्मक मिडिया प्रमाणिकरण विधेयकको चर्चा गर्दैछ।</p>
-            </article>
-            <article class="news-card mini card-suspect">
-                <span class="cat-badge mini">संदिग्ध</span>
-                <h3>सार्वजनिक बैंक दिवालिया भएको अफवाह फैलियो</h3>
-                <p>स्थानिय सामाजिक मिडियामा फैलिएको समाचारलाई साँचो भनी गलत सावित गरियो।</p>
-            </article>
-            <article class="news-card mini">
-                <span class="cat-badge mini">Business</span>
-                <h3>पर्यटन र अर्थतन्त्र अब दुवै पुनरुत्थानको बाटोमा</h3>
-                <p>Latest economic indicators show recovery after the monsoon season.</p>
-            </article>
-            <article class="news-card mini">
-                <span class="cat-badge mini">Tech</span>
-                <h3>AI सत्यापन टूलले १०००+ कन्फ्यूजिंग समाचार स्क्यान गर्यो</h3>
-                <p>हेयरलाइन सत्यता स्कोर र लेखको विश्वसनीयता अब एक क्लिकमा।</p>
-            </article>
-        </div>
-    </section>
-
-    <footer class="landing-footer">
-        <p>🛡️ TruthLens Nepal • २०२६ • AI-driven news verification for Nepali readers</p>
+    <footer class="login-page-footer">
+        <p>TRUTHLENS NEPAL &copy; २०२६ &nbsp;|&nbsp; समाचार सत्यापन केन्द्र &nbsp;|&nbsp; Secure &bull; Transparent &bull; Reliable</p>
     </footer>
 </div>
 
