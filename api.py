@@ -1,16 +1,27 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import os
+import json
 import datetime
-from src.detector import predict_authenticity, load_model, load_datasets
+import logging
+from src.detector import predict_authenticity, load_model
 from src.fetcher import fetch_news, scrape_article_from_url
 from src.config import APP_NAME, APP_VERSION
 
 app = Flask(__name__)
-CORS(app) # Enable CORS for frontend access
+CORS(app)
 
-# Load model globally
-pipeline = load_model()
+# Logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Load model globally (best-effort)
+try:
+    pipeline = load_model()
+    logger.info("Model loaded successfully")
+except Exception as e:
+    pipeline = None
+    logger.exception("Failed to load model")
 
 @app.route('/api/status', methods=['GET'])
 def get_status():
@@ -18,18 +29,17 @@ def get_status():
     try:
         metrics_path = os.path.join('outputs', 'metrics.json')
         if os.path.exists(metrics_path):
-            import json
-            with open(metrics_path, 'r') as f:
+            with open(metrics_path, 'r', encoding='utf-8') as f:
                 metrics = json.load(f)
-    except:
-        pass
+    except Exception:
+        logger.exception("Unable to read metrics file")
 
     return jsonify({
         "app": APP_NAME,
         "version": APP_VERSION,
         "status": "online",
         "model_loaded": pipeline is not None,
-        "metrics": metrics
+        "metrics": metrics,
     })
 
 @app.route('/api/news', methods=['GET'])
@@ -44,11 +54,12 @@ def get_news():
             "results": news
         })
     except Exception as e:
+        logger.exception("Error fetching news")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/api/predict', methods=['POST'])
 def predict():
-    data = request.json
+    data = request.get_json(silent=True) or {}
     text = data.get('text', '')
     if not text:
         return jsonify({"status": "error", "message": "No text provided"}), 400
@@ -67,18 +78,21 @@ def predict():
 
 @app.route('/api/scrape', methods=['POST'])
 def scrape():
-    data = request.json
+    data = request.get_json(silent=True) or {}
     url = data.get('url', '')
     if not url:
         return jsonify({"status": "error", "message": "No URL provided"}), 400
-    
-    title, text = scrape_article_from_url(url)
-    return jsonify({
-        "title": title,
-        "text": text
-    })
+
+    try:
+        title, text = scrape_article_from_url(url)
+        return jsonify({"title": title, "text": text})
+    except Exception as e:
+        logger.exception("Error scraping URL: %s", url)
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    print(f"Starting TruthLens API on port {port}...")
-    app.run(host='0.0.0.0', port=port, debug=True)
+    debug_env = os.environ.get('FLASK_DEBUG', os.environ.get('DEBUG', ''))
+    debug = str(debug_env).lower() in ('1', 'true', 'yes')
+    logger.info("Starting TruthLens API on port %s (debug=%s)", port, debug)
+    app.run(host='0.0.0.0', port=port, debug=debug)
