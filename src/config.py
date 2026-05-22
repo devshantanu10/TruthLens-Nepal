@@ -219,6 +219,14 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 LOG_FILE = str(PROJECT_ROOT / "logs" / "app.log")
 
+# Ensure logs directory exists
+try:
+    _log_dir = Path(LOG_FILE).parent
+    _log_dir.mkdir(parents=True, exist_ok=True)
+except Exception:
+    # Best-effort: don't crash if logs directory can't be created
+    pass
+
 # ============================================================================
 # PERFORMANCE & OPTIMIZATION
 # ============================================================================
