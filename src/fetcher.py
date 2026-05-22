@@ -4,6 +4,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from .config import TRUSTED_SOURCES, NEWSDATA_API_KEY
 from typing import List, Dict
+import random
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -75,8 +76,7 @@ def fetch_news(refresh_token: str = "0"):
             seen_titles.add(norm_title)
             
     # --- SHUFFLE & VARIETY ---
-    import random
-    # Use the refresh_token as a seed if we want deterministic variety, 
+    # Use the refresh_token as a seed if we want deterministic variety,
     # otherwise just shuffle randomly for maximum freshness.
     random.shuffle(unique_news)
     
