@@ -8,7 +8,7 @@ import requests
 
 ROOT_DIR = Path(__file__).resolve().parent
 DATA_DIR = ROOT_DIR / "data"
-DATA_DIR.mkdir(exist_ok=True)
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 TRUE_SOURCES = [
     {"name": "Onlinekhabar", "rss": "https://www.onlinekhabar.com/feed"},
