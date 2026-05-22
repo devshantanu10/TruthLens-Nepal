@@ -49,7 +49,7 @@ async function fetchRSSSource(source) {
             }));
         }
     } catch (e) {
-        console.warn(`RSS fetch failed for ${source.name}:`, e.message);
+        console.warn(`RSS fetch failed for ${source.name}:`, e?.message || e);
     }
     return [];
 }
