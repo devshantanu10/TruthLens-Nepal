@@ -377,25 +377,11 @@ def predict_authenticity(
     if heuristic_score > 0.3:
         reasons.append("📢 Detected sensationalism or clickbait markers")
     
-    # ===== PHASE 4: ML PREDICTION =====
-    ml_probability = phase_4_ml_prediction(cleaned, pipeline)
+    # ===== NOT IN DATABASE FALLBACK =====
+    # Since the news is not verified in our databases, we return the fallback verdict
+    # but still provide all the extracted forensic findings (bias, heuristics, live cross-ref).
+    reasons.insert(0, "⚠️ समाचार हाम्रो डेटाबेसमा भेटिएन (Not in Database to Authenticate)")
     
-    # ===== FINAL CONSENSUS =====
-    # final_score represents probability of being UNCREDIBLE
-    # We trust the ML model strongly. Live news cross-reference is disabled
-    # (live_news=None from API) to avoid slow fetches during prediction.
-    final_score = (ml_probability * ML_MODEL_WEIGHT) + (heuristic_score * HEURISTIC_WEIGHT)
-    final_score = min(max(final_score, 0.0), 1.0)
+    logger.info(f"Prediction: Not in Database to Authenticate (Sensationalism: {heuristic_score:.2%})")
     
-    # Determine verdict
-    is_fake = final_score >= threshold
-    verdict = "Uncredible" if is_fake else "Credible"
-    
-    # Confidence should reflect how confident we are in the VERDICT:
-    # - If Uncredible: confidence = final_score (how sure we are it's fake)
-    # - If Credible: confidence = 1 - final_score (how sure we are it's real)
-    confidence = final_score if is_fake else (1.0 - final_score)
-    
-    logger.info(f"Prediction: {verdict} (Confidence: {confidence:.2%}, Raw Score: {final_score:.2%})")
-    
-    return verdict, confidence, reasons, heuristic_score, detected_parties
+    return "Not in Database to Authenticate", 0.0, reasons, heuristic_score, detected_parties

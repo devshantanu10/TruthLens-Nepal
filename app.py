@@ -232,7 +232,7 @@ def render_live_feed():
                 
                 if i in st.session_state.results:
                     verdict, score, reasons = st.session_state.results[i]
-                    v_class = "verdict-uncredible" if verdict == "Uncredible" else "verdict-credible"
+                    v_class = "verdict-uncredible" if verdict == "Uncredible" else ("verdict-neutral" if verdict == "Not in Database to Authenticate" else "verdict-credible")
                     
                     r_col.markdown(f'''
 <div class="verdict-container {v_class}">
@@ -267,7 +267,7 @@ def render_analysis_page():
                 with st.spinner("🕵️ Running ML Algorithms and Cross-Referencing..."):
                     verdict, score, reasons, h_score, parties = predict_authenticity(text_input, pipeline, live_news=news)
                     
-                    v_class = "verdict-uncredible" if verdict == "Uncredible" else "verdict-credible"
+                    v_class = "verdict-uncredible" if verdict == "Uncredible" else ("verdict-neutral" if verdict == "Not in Database to Authenticate" else "verdict-credible")
                     
                     st.markdown(f'''
 <div class="verdict-container {v_class}">
@@ -426,7 +426,7 @@ def main():
                             st.write(f"**Title:** {title}")
                             verdict, score, reasons, h_score, parties = predict_authenticity(f"{title} {text}", load_model())
                             
-                            v_class = "verdict-uncredible" if verdict == "Uncredible" else "verdict-credible"
+                            v_class = "verdict-uncredible" if verdict == "Uncredible" else ("verdict-neutral" if verdict == "Not in Database to Authenticate" else "verdict-credible")
                             st.markdown(f'''
 <div class="verdict-container {v_class}">
 <div class="verdict-title">{verdict}</div>

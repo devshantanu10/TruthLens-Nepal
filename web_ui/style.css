@@ -227,9 +227,11 @@ body {
 .verdict-box { border-radius:8px; padding:16px 18px; border:1px solid transparent; animation:fadeIn .3s ease; }
 .verdict-credible { background:#f0fdf4; border-color:#86efac; }
 .verdict-uncredible { background:#fff1f2; border-color:#fca5a5; }
+.verdict-neutral { background:#f5f3ff; border-color:#c4b5fd; }
 .verdict-title { font-size:1.1rem; font-weight:800; margin-bottom:10px; text-transform:uppercase; letter-spacing:.5px; font-family:'Noto Sans Devanagari','Inter',sans-serif; }
 .verdict-credible .verdict-title { color:var(--success); }
 .verdict-uncredible .verdict-title { color:var(--danger); }
+.verdict-neutral .verdict-title { color:#7c3aed; }
 .verdict-findings { background:rgba(0,0,0,.04); border-radius:6px; padding:12px; margin-top:8px; }
 .verdict-findings strong { display:block; margin-bottom:6px; font-size:.85rem; color:var(--text); font-family:'Noto Sans Devanagari',sans-serif; }
 .verdict-findings ul { padding-left:18px; color:var(--text-dim); font-size:.83rem; font-family:'Noto Sans Devanagari','Inter',sans-serif; }

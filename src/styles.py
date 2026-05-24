@@ -116,6 +116,12 @@ def apply_custom_styles():
             color: #DC3545;
         }
 
+        .verdict-neutral {
+            background: rgba(255, 153, 51, 0.06);
+            border: 1px solid #FF9933;
+            color: #FF9933;
+        }
+
         .verdict-title {
             font-family: 'Outfit', sans-serif;
             font-size: 2.2rem;

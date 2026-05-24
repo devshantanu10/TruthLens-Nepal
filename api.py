@@ -73,7 +73,7 @@ def predict():
         "reasons": reasons,
         "heuristic_score": float(h_score),
         "parties": parties,
-        "timestamp": datetime.datetime.now().isoformat()
+        "timestamp": datetime.datetime.now().isoformat() 
     })
 
 @app.route('/api/scrape', methods=['POST'])

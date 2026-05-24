@@ -50,7 +50,7 @@ def sample_fake_text():
 @pytest.fixture
 def sample_short_text():
     """Sample text below minimum length."""
-    return "Short"
+    return "Sho"
 
 
 @pytest.fixture
@@ -61,20 +61,20 @@ def sample_political_text():
 
 @pytest.fixture
 def mock_dataframes():
-    """Create mock true and fake news dataframes."""
+    """Create mock true and fake news dataframes with articles longer than 80 characters."""
     true_df = pd.DataFrame({
         'text': [
-            'Real news about actual events',
-            'This is a verified article from trusted source',
-            'Breaking news from official authorities'
+            'Real news about actual events that are happening around the country of Nepal right now in real time.',
+            'This is a verified article from a highly trusted source that reports accurate news details correctly.',
+            'Breaking news from official authorities regarding the new national educational policy guidelines for schools.'
         ]
     })
     
     fake_df = pd.DataFrame({
         'text': [
-            'This is completely made up story',
-            'Fake news article for testing',
-            'Misinformation spread on social media'
+            'This is a completely made up story and clickbait article designed to spread false rumors on social media platforms.',
+            'Fake news article for testing that contains highly sensationalized claims about various local celebrities.',
+            'Misinformation spread on social media regarding fake health remedies and conspiracy theories with no proof.'
         ]
     })
     
@@ -247,26 +247,26 @@ class TestPhase1DatabaseLookup:
         """Test detection of exact match in true news database."""
         true_df, fake_df = mock_dataframes
         
-        # Use exact text from the dataframe
-        text = "Real news about actual events"
+        # Use exact text from the dataframe (must be >80 characters)
+        text = "Real news about actual events that are happening around the country of Nepal right now in real time."
         cleaned = clean_text(text)
         
         result = phase_1_database_lookup(text, cleaned, true_df, fake_df)
         assert result is not None
         assert result[0] == "Credible"
-        assert result[1] >= 0.9
+        assert result[1] > 0.9
     
     def test_database_lookup_exact_match_fake(self, mock_dataframes):
         """Test detection of exact match in fake news database."""
         true_df, fake_df = mock_dataframes
         
-        text = "This is completely made up story"
+        text = "This is a completely made up story and clickbait article designed to spread false rumors on social media platforms."
         cleaned = clean_text(text)
         
         result = phase_1_database_lookup(text, cleaned, true_df, fake_df)
         assert result is not None
         assert result[0] == "Uncredible"
-        assert result[1] >= 0.9
+        assert result[1] > 0.9
     
     def test_database_lookup_no_match(self, mock_dataframes):
         """Test behavior when no match found in databases."""
@@ -409,34 +409,38 @@ class TestFullPredictionPipeline:
         verdict, score, reasons, h_score, parties = predict_authenticity("Hi", None)
         assert verdict == "Invalid Input"
     
-    @patch('src.detector.load_datasets')
     @patch('src.detector.load_model')
-    def test_predict_authenticity_with_valid_input(self, mock_load_model, mock_load_datasets, 
-                                                     mock_dataframes, mock_pipeline, sample_valid_text):
-        """Test prediction with valid input."""
-        mock_load_datasets.return_value = mock_dataframes
+    def test_predict_authenticity_with_valid_input(self, mock_load_model, mock_dataframes, mock_pipeline, sample_valid_text):
+        """Test prediction with valid input (unseen news article)."""
         mock_load_model.return_value = mock_pipeline
+        true_df, fake_df = mock_dataframes
         
-        verdict, score, reasons, h_score, parties = predict_authenticity(sample_valid_text, mock_pipeline)
-        
-        assert verdict in ["Credible", "Uncredible"]
-        assert 0 <= score <= 1
-        assert isinstance(reasons, list)
-        assert 0 <= h_score <= 1
-        assert isinstance(parties, list)
+        with patch('src.detector.TRUE_DATASET', true_df), patch('src.detector.FAKE_DATASET', fake_df):
+            # Test unseen text (Not in Database)
+            verdict, score, reasons, h_score, parties = predict_authenticity(sample_valid_text, mock_pipeline)
+            assert verdict == "Not in Database to Authenticate"
+            assert score == 0.0
+            assert isinstance(reasons, list)
+            assert 0 <= h_score <= 1
+            assert isinstance(parties, list)
+            
+            # Test database matched text (Credible match)
+            db_matched_text = "This is a verified article from a highly trusted source that reports accurate news details correctly."
+            verdict_db, score_db, reasons_db, _, _ = predict_authenticity(db_matched_text, mock_pipeline)
+            assert verdict_db == "Credible"
+            assert score_db > 0.8
     
-    @patch('src.detector.load_datasets')
-    def test_predict_authenticity_with_threshold(self, mock_load_datasets, mock_dataframes, 
-                                                   mock_pipeline, sample_valid_text):
-        """Test prediction respects threshold parameter."""
-        mock_load_datasets.return_value = mock_dataframes
+    def test_predict_authenticity_with_threshold(self, mock_dataframes, mock_pipeline):
+        """Test prediction respects threshold parameter for database matched content."""
+        true_df, fake_df = mock_dataframes
         
-        verdict_low, _, _, _, _ = predict_authenticity(sample_valid_text, mock_pipeline, threshold=0.3)
-        verdict_high, _, _, _, _ = predict_authenticity(sample_valid_text, mock_pipeline, threshold=0.8)
-        
-        # Results may differ based on threshold
-        assert verdict_low in ["Credible", "Uncredible"]
-        assert verdict_high in ["Credible", "Uncredible"]
+        with patch('src.detector.TRUE_DATASET', true_df), patch('src.detector.FAKE_DATASET', fake_df):
+            # Unseen text returns fallback regardless of threshold
+            verdict_low, _, _, _, _ = predict_authenticity("Some random news text that is not in the database", mock_pipeline, threshold=0.3)
+            verdict_high, _, _, _, _ = predict_authenticity("Some random news text that is not in the database", mock_pipeline, threshold=0.8)
+            
+            assert verdict_low == "Not in Database to Authenticate"
+            assert verdict_high == "Not in Database to Authenticate"
 
 
 # ============================================================================
@@ -446,32 +450,32 @@ class TestFullPredictionPipeline:
 class TestIntegration:
     """Integration tests combining multiple components."""
     
-    @patch('src.detector.load_datasets')
     @patch('src.detector.load_model')
-    def test_full_workflow_with_database_match(self, mock_load_model, mock_load_datasets, 
-                                                mock_dataframes, mock_pipeline):
+    def test_full_workflow_with_database_match(self, mock_load_model, mock_dataframes, mock_pipeline):
         """Test complete workflow when database match found."""
-        mock_load_datasets.return_value = mock_dataframes
         mock_load_model.return_value = mock_pipeline
+        true_df, fake_df = mock_dataframes
         
-        text = "Real news about actual events"
-        verdict, score, reasons, _, _ = predict_authenticity(text, mock_pipeline)
-        
-        # Should detect database match
-        assert "database" in str(reasons).lower() or "verified" in str(reasons).lower()
+        with patch('src.detector.TRUE_DATASET', true_df), patch('src.detector.FAKE_DATASET', fake_df):
+            text = "Real news about actual events that are happening around the country of Nepal right now in real time."
+            verdict, score, reasons, _, _ = predict_authenticity(text, mock_pipeline)
+            
+            # Should detect database match
+            assert verdict == "Credible"
+            assert any("डेटाबेस" in r or "database" in r.lower() for r in reasons)
     
-    @patch('src.detector.load_datasets')
     @patch('src.detector.load_model')
-    def test_full_workflow_with_heuristics(self, mock_load_model, mock_load_datasets, 
-                                            mock_dataframes, mock_pipeline, sample_fake_text):
+    def test_full_workflow_with_heuristics(self, mock_load_model, mock_dataframes, mock_pipeline, sample_fake_text):
         """Test complete workflow with heuristic analysis."""
-        mock_load_datasets.return_value = mock_dataframes
         mock_load_model.return_value = mock_pipeline
+        true_df, fake_df = mock_dataframes
         
-        verdict, score, reasons, h_score, _ = predict_authenticity(sample_fake_text, mock_pipeline)
-        
-        assert h_score > 0
-        assert len(reasons) > 0
+        with patch('src.detector.TRUE_DATASET', true_df), patch('src.detector.FAKE_DATASET', fake_df):
+            verdict, score, reasons, h_score, _ = predict_authenticity(sample_fake_text, mock_pipeline)
+            
+            assert verdict == "Not in Database to Authenticate"
+            assert h_score > 0
+            assert len(reasons) > 0
 
 
 # ============================================================================

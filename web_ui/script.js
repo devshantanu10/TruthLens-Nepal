@@ -444,10 +444,12 @@ async function handlePrediction(text, container) {
     }
 
     const isFake = res.verdict === "Uncredible";
-    const vClass = isFake ? "verdict-uncredible" : "verdict-credible";
-    const icon = isFake ? "🚨" : "✅";
-    const verdictNe = isFake ? "झूटा समाचार" : "विश्वसनीय";
-    const confidence = Math.round((res.confidence || 0.5) * 100);
+    const isUnknown = res.verdict === "Not in Database to Authenticate";
+    const vClass = isFake ? "verdict-uncredible" : (isUnknown ? "verdict-neutral" : "verdict-credible");
+    const icon = isFake ? "🚨" : (isUnknown ? "⚠️" : "✅");
+    const verdictNe = isFake ? "झूटा समाचार" : (isUnknown ? "प्रमाणीकरण असम्भव" : "विश्वसनीय");
+    const confidenceValue = (typeof res.confidence === 'number') ? res.confidence : 0.5;
+    const confidence = Math.round(confidenceValue * 100);
     const engineNote = usedFallback
         ? `<div style="font-size:.72rem;color:#999;margin-top:6px;">⚠️ Offline मोड — Heuristic विश्लेषण (AI मोडेलका लागि Flask सुरु गर्नुहोस्)</div>`
         : `<div style="font-size:.72rem;color:#16a34a;margin-top:6px;">🤖 AI ML मोडेल (TF-IDF + Logistic Regression)</div>`;
