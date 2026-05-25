@@ -311,7 +311,7 @@ def predict_authenticity(
     pipeline: Optional[object],
     threshold: float = 0.5,
     live_news: Optional[List[Dict]] = None
-) -> Tuple[str, float, List[str], float, List[str]]:
+) -> Tuple[str, Optional[float], List[str], float, List[str]]:
     """
     Comprehensive news authenticity prediction using multi-phase analysis.
     
@@ -331,8 +331,8 @@ def predict_authenticity(
     Returns:
         Tuple: (verdict, confidence_score, reasons, heuristic_score, parties_detected)
         
-    Verdict: "Credible" or "Uncredible"
-    Confidence: 0-1 (1 = very likely fake)
+    Verdict: "Credible", "Uncredible", or "Not in Database to Authenticate"
+    Confidence: Optional[float] 0-1 for known predictions, None if unable to verify
     Reasons: List of analysis findings
     Heuristic Score: 0-1 sensationalism level
     Parties: List of political entities detected
@@ -384,4 +384,4 @@ def predict_authenticity(
     
     logger.info(f"Prediction: Not in Database to Authenticate (Sensationalism: {heuristic_score:.2%})")
     
-    return "Not in Database to Authenticate", 0.0, reasons, heuristic_score, detected_parties
+    return "Not in Database to Authenticate", None, reasons, heuristic_score, detected_parties

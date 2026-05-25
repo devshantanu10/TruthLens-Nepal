@@ -419,7 +419,7 @@ class TestFullPredictionPipeline:
             # Test unseen text (Not in Database)
             verdict, score, reasons, h_score, parties = predict_authenticity(sample_valid_text, mock_pipeline)
             assert verdict == "Not in Database to Authenticate"
-            assert score == 0.0
+            assert score is None
             assert isinstance(reasons, list)
             assert 0 <= h_score <= 1
             assert isinstance(parties, list)

@@ -69,7 +69,7 @@ def predict():
     
     return jsonify({
         "verdict": verdict,
-        "confidence": float(score),
+        "confidence": float(score) if score is not None else None,
         "reasons": reasons,
         "heuristic_score": float(h_score),
         "parties": parties,

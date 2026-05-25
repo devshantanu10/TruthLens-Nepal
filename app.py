@@ -233,10 +233,21 @@ def render_live_feed():
                 if i in st.session_state.results:
                     verdict, score, reasons = st.session_state.results[i]
                     v_class = "verdict-uncredible" if verdict == "Uncredible" else ("verdict-neutral" if verdict == "Not in Database to Authenticate" else "verdict-credible")
+                    verdict_label = {
+                        "Uncredible": "🚨 झूटा समाचार",
+                        "Credible": "✅ विश्वसनीय",
+                        "Not in Database to Authenticate": "⚠️ प्रमाणिकरण असम्भव"
+                    }.get(verdict, verdict)
+                    confidence_label = ""
+                    if score is not None:
+                        confidence_label = f"<div style='margin-top:6px; font-size:0.85rem; color:#94a3b8;'>विश्वसनीयता: {int(score * 100)}%</div>"
+                    else:
+                        confidence_label = "<div style='margin-top:6px; font-size:0.85rem; color:#f59e0b;'>विश्वसनीयता जाँच गर्न सकिएन</div>"
                     
                     r_col.markdown(f'''
 <div class="verdict-container {v_class}">
-<div class="verdict-title">{verdict}</div>
+<div class="verdict-title">{verdict_label}</div>
+{confidence_label}
 <div class="flagged-features">
 <strong>🔍 Forensic Findings:</strong>
 <ul>
@@ -268,10 +279,21 @@ def render_analysis_page():
                     verdict, score, reasons, h_score, parties = predict_authenticity(text_input, pipeline, live_news=news)
                     
                     v_class = "verdict-uncredible" if verdict == "Uncredible" else ("verdict-neutral" if verdict == "Not in Database to Authenticate" else "verdict-credible")
+                    verdict_label = {
+                        "Uncredible": "🚨 झूटा समाचार",
+                        "Credible": "✅ विश्वसनीय",
+                        "Not in Database to Authenticate": "⚠️ प्रमाणिकरण असम्भव"
+                    }.get(verdict, verdict)
+                    confidence_label = ""
+                    if score is not None:
+                        confidence_label = f"<div style='margin-top:6px; font-size:0.9rem; color:#94a3b8;'>विश्वसनीयता: {int(score * 100)}%</div>"
+                    else:
+                        confidence_label = "<div style='margin-top:6px; font-size:0.9rem; color:#f59e0b;'>विश्वसनीयता जाँच गर्न सकिएन</div>"
                     
                     st.markdown(f'''
 <div class="verdict-container {v_class}">
-<div class="verdict-title">{verdict}</div>
+<div class="verdict-title">{verdict_label}</div>
+{confidence_label}
 <div class="flagged-features">
 <strong>🔍 Analysis Highlights:</strong>
 <ul>

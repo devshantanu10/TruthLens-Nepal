@@ -403,13 +403,36 @@ function clientSideHeuristic(text) {
 
     const finalScore = Math.min(fakeScore, 1.0);
     const isFake = finalScore >= 0.35 || (fakeScore > trueScore + 0.1);
+    const hasTrustedSignal = trueScore >= 0.3;
 
-    if (!isFake) reasons.push("✅ सन्तुलित भाषाशैली पाइयो");
-    if (isFake && reasons.length === 0) reasons.push("🚨 भ्रामक सामग्रीको संकेत पाइयो");
+    if (isFake) {
+        if (reasons.length === 0) reasons.push("🚨 भ्रामक सामग्रीको संकेत पाइयो");
+        return {
+            verdict: "Uncredible",
+            confidence: Math.max(finalScore, 0.65),
+            reasons,
+            source: "client"
+        };
+    }
+
+    if (hasTrustedSignal) {
+        if (reasons.length === 0) reasons.push("✅ सन्तुलित भाषाशैली पाइयो");
+        return {
+            verdict: "Credible",
+            confidence: Math.max(1 - finalScore - trueScore * 0.3, 0.6),
+            reasons,
+            source: "client"
+        };
+    }
+
+    // No strong signal to verify the text as true or false.
+    if (reasons.length === 0) {
+        reasons.push("⚠️ पर्याप्त प्रमाण छैन — प्रमाणिकरण गर्न असमर्थ।");
+    }
 
     return {
-        verdict: isFake ? "Uncredible" : "Credible",
-        confidence: isFake ? Math.max(finalScore, 0.65) : Math.max(1 - finalScore - trueScore * 0.3, 0.6),
+        verdict: "Not in Database to Authenticate",
+        confidence: null,
         reasons,
         source: "client"
     };
@@ -448,15 +471,17 @@ async function handlePrediction(text, container) {
     const vClass = isFake ? "verdict-uncredible" : (isUnknown ? "verdict-neutral" : "verdict-credible");
     const icon = isFake ? "🚨" : (isUnknown ? "⚠️" : "✅");
     const verdictNe = isFake ? "झूटा समाचार" : (isUnknown ? "प्रमाणीकरण असम्भव" : "विश्वसनीय");
-    const confidenceValue = (typeof res.confidence === 'number') ? res.confidence : 0.5;
-    const confidence = Math.round(confidenceValue * 100);
+    const confidenceValue = (typeof res.confidence === 'number') ? res.confidence : null;
+    const confidenceText = confidenceValue !== null
+        ? `${Math.round(confidenceValue * 100)}% निश्चितता`
+        : "विश्वसनीयता जाँच गर्न सकिएन";
     const engineNote = usedFallback
         ? `<div style="font-size:.72rem;color:#999;margin-top:6px;">⚠️ Offline मोड — Heuristic विश्लेषण (AI मोडेलका लागि Flask सुरु गर्नुहोस्)</div>`
         : `<div style="font-size:.72rem;color:#16a34a;margin-top:6px;">🤖 AI ML मोडेल (TF-IDF + Logistic Regression)</div>`;
 
     container.innerHTML = `
         <div class="verdict-box ${vClass}" style="margin-top:10px;">
-            <div class="verdict-title">${icon} ${verdictNe} — ${confidence}% निश्चितता</div>
+            <div class="verdict-title">${icon} ${verdictNe} — ${confidenceText}</div>
             <div class="verdict-findings">
                 <strong>विश्लेषण सारांश:</strong>
                 <ul>${(res.reasons || []).map(r => `<li>${r}</li>`).join('')}</ul>
