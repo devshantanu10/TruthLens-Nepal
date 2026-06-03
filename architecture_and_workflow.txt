@@ -31,13 +31,12 @@ The core intelligence lives in `src/detector.py`, which evaluates news text usin
 ---
 
 ## 3. Web App Workflow
-There are two interfaces for the application: the **Python (Streamlit) App** and the **Static Frontend (GitHub Pages)**.
+There are two interfaces for the application: the **Flask API** and the **Static Frontend (GitHub Pages)**.
 
-### A. Python Streamlit App (`app.py`) - Full Backend
-*   **Login Portal**: Users log in as either "Citizen Access" or "Official Admin".
-*   **Live Feed**: Scrapes real-time Nepali news (via `src/fetcher.py`). Users can click "Verify", which triggers the `predict_authenticity` pipeline described above.
-*   **Forensic Scan**: Users can paste raw text or a URL. The backend scrapes the URL, analyzes the text using all 5 phases, and outputs a detailed forensic report.
-*   **Admin Dashboard (Admins Only)**: Allows administrators to view database statistics, track model accuracy, and trigger the model retraining pipeline (`train_model.py`) via the UI.
+### A. Flask API (`api.py`) - Backend Service
+*   **Prediction API**: Handles text authentication and optional URL scraping using `api.py`.
+*   **Forensic Scan**: The backend can accept submitted text and return detailed prediction reasoning.
+*   **Static Frontend**: The static `web_ui/` frontend provides a modern dashboard experience and can be used with or without the API.
 
 ### B. Static Deployed App (`web_ui/` folder) - GitHub Pages
 *   **Static Nature**: Since GitHub Pages only supports static files (HTML, CSS, JS), it cannot run the Python ML pipeline or scrape live news dynamically.
