@@ -1,14 +1,16 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 import os
 import json
 import datetime
 import logging
+import io
+from gtts import gTTS
 from src.detector import predict_authenticity, load_model
 from src.fetcher import fetch_news, scrape_article_from_url
 from src.config import APP_NAME, APP_VERSION
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='web_ui', static_url_path='')
 CORS(app)
 
 # Logging
@@ -22,6 +24,10 @@ try:
 except Exception as e:
     pipeline = None
     logger.exception("Failed to load model")
+
+@app.route('/')
+def index():
+    return app.send_static_file('index.html')
 
 @app.route('/api/status', methods=['GET'])
 def get_status():
@@ -76,10 +82,14 @@ def predict():
         "timestamp": datetime.datetime.now().isoformat() 
     })
 
-@app.route('/api/scrape', methods=['POST'])
+@app.route('/api/scrape', methods=['GET', 'POST'])
 def scrape():
-    data = request.get_json(silent=True) or {}
-    url = data.get('url', '')
+    if request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        url = data.get('url', '')
+    else:
+        url = request.args.get('url', '')
+
     if not url:
         return jsonify({"status": "error", "message": "No URL provided"}), 400
 
@@ -88,6 +98,28 @@ def scrape():
         return jsonify({"title": title, "text": text})
     except Exception as e:
         logger.exception("Error scraping URL: %s", url)
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/tts', methods=['POST'])
+def generate_tts():
+    data = request.get_json(silent=True) or {}
+    text = (data.get('text') or '').strip()
+    if not text:
+        return jsonify({"status": "error", "message": "No text provided"}), 400
+
+    try:
+        tts = gTTS(text=text, lang='ne')
+        mp3_bytes = io.BytesIO()
+        tts.write_to_fp(mp3_bytes)
+        mp3_bytes.seek(0)
+        return send_file(
+            mp3_bytes,
+            mimetype='audio/mpeg',
+            as_attachment=False,
+            download_name='tts-nepali.mp3'
+        )
+    except Exception as e:
+        logger.exception("TTS generation failed")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
