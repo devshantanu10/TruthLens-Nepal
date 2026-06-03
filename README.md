@@ -1,6 +1,6 @@
 # TruthLens — Fake News & Misinformation Detector
 
-Detect fake vs real news articles using Machine Learning, TF-IDF, and Logistic Regression, complete with training scripts, evaluation charts, and an interactive Streamlit web app.
+Detect fake vs real news articles using Machine Learning, TF-IDF, and Logistic Regression, complete with training scripts, evaluation charts, and a lightweight web UI.
       
 ---
 
@@ -13,7 +13,7 @@ Detect fake vs real news articles using Machine Learning, TF-IDF, and Logistic R
 - [Training the Model](#-training-the-model)
 - [Evaluation & Charts](#-evaluation--charts)
 - [How It Works](#-how-it-works)
-- [Running the Streamlit App](#-running-the-streamlit-app)
+- [Running the Web UI](#-running-the-web-ui)
 - [Code Modules](#-code-modules)
 - [Technologies Used](#-technologies-used)
 - [License](#-license)
@@ -29,16 +29,16 @@ It combines **TF-IDF feature extraction** with a **Logistic Regression classifie
 
 The project also includes:
 - **Model evaluation with visual charts**
-- **Interactive Streamlit web app**
+- **Static web UI with JavaScript-driven verification**
 - **Reusable and modular code structure**
 
 ---
 
 ## Demo
 
-### Streamlit Web App
+### Web UI Demo
 
-When launched, the app allows you to paste or type any news headline or paragraph and analyze its credibility in real time.
+Open the static frontend in a browser to browse news cards, verify articles, and view AI-style summaries.
 
 <img width="683" height="490" alt="Screenshot 2025-10-25 at 17-39-13 Fake News Detector" src="https://github.com/user-attachments/assets/d68c9b02-fe94-48d5-85ce-06b292e38dbb" />
 
@@ -71,7 +71,8 @@ fake-news-detector/
 │   ├── utils.py                 # I/O helpers
 │   ├── train_model.py           # Training and evaluation script
 │   ├── detect_fake_news.py      # CLI prediction script
-│   └── streamlit_app.py         # Streamlit web application
+│   └── api.py                   # Flask API for predictions and article scraping
+│   └── web_ui/                  # Static frontend files (HTML, CSS, JS)
 │
 └── README.md
 ```
@@ -93,7 +94,7 @@ pip install -r requirements.txt
 
 Or install manually:
 ```bash
-pip install pandas numpy scikit-learn matplotlib streamlit joblib
+pip install pandas numpy scikit-learn matplotlib joblib
 ```
 
 ---
@@ -199,23 +200,18 @@ Label: FAKE | Fake probability: 0.560 | Threshold: 0.40
 
 ---
 
-## Running the Streamlit App
+## Running the Web UI
 
-### Launch the App
+### Open the Static Frontend
+Open `web_ui/index.html` in a browser, or serve the `web_ui/` folder with a simple static server.
+
+### Optional Backend API
+To enable prediction and article scraping support, run:
 ```bash
-streamlit run src/streamlit_app.py
+python api.py
 ```
 
-Then open the local web interface:
-```
-http://localhost:8501
-```
-
-### App Features
-- Paste any headline or paragraph  
-- Analyze with one click  
-- Adjust FAKE probability threshold  
-- See model file locations and loaded status in sidebar  
+Then access the frontend as a static page while the API runs in the background.
 
 ---
 
@@ -227,7 +223,7 @@ http://localhost:8501
 | `utils.py` | Ensures output directories exist and handles JSON I/O |
 | `train_model.py` | Loads data, trains the model, and generates metrics and plots |
 | `detect_fake_news.py` | CLI script for predicting individual samples |
-| `streamlit_app.py` | Streamlit web app for interactive user testing |
+| `api.py` | Flask API for prediction and article scraping |
 
 ---
 
@@ -238,7 +234,7 @@ http://localhost:8501
 - **pandas / numpy** → Data manipulation  
 - **matplotlib** → Model visualization  
 - **joblib** → Model persistence  
-- **Streamlit** → Web interface  
+- **Flask** → API backend for predictions and scraping  
 
 ---
 
@@ -246,4 +242,4 @@ http://localhost:8501
 - Integrate **BERT / DistilBERT** for contextual language understanding  
 - Extend dataset for **multi-language** fake news detection  
 - Add **Explainable AI** (LIME / SHAP) for model transparency  
-- Deploy live on **Streamlit Cloud** or **Hugging Face Spaces**
+- Deploy live on a static site host and use the Flask API for backend support
