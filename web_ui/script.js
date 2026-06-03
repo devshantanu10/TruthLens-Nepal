@@ -1,5 +1,107 @@
 // ── Configuration ──
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = 'http://127.0.0.1:5000/api';
+
+async function fetchScrape(url) {
+    const endpoints = [
+        `${API_BASE}/scrape`,
+        'http://127.0.0.1:5000/api/scrape',
+        'http://localhost:5000/api/scrape'
+    ];
+
+    for (const endpoint of endpoints) {
+        try {
+            const resp = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url })
+            });
+            if (!resp.ok) {
+                const contentType = resp.headers.get('content-type') || '';
+                const textBody = contentType.includes('application/json') ? await resp.json() : await resp.text();
+                throw new Error(typeof textBody === 'string' ? textBody : textBody.message || `Status ${resp.status}`);
+            }
+            return await resp.json();
+        } catch (err) {
+            console.warn(`Scrape failed on ${endpoint}:`, err.message || err);
+        }
+    }
+    throw new Error('Unable to reach backend scrape API. कृपया Flask चलाउनुहोस् र पेजलाई http://localhost:5000 बाट खोल्नुहोस्।');
+}
+
+let selectedTtsVoice = null;
+
+function getNepaliVoice() {
+    if (!window.speechSynthesis) return null;
+    const availableVoices = window.speechSynthesis.getVoices();
+    if (!availableVoices || !availableVoices.length) return null;
+
+    const nepaliVoice = availableVoices.find(v => /nep|ne-NP|nepali/i.test(`${v.name} ${v.lang}`));
+    if (nepaliVoice) return nepaliVoice;
+    const hindiVoice = availableVoices.find(v => /hi|hi-IN|hindi/i.test(`${v.name} ${v.lang}`));
+    return hindiVoice || null;
+}
+
+function hasSupportedNepaliVoice() {
+    return selectedTtsVoice && /nep|ne-NP|nepali|hi|hi-IN|hindi/i.test(`${selectedTtsVoice.name} ${selectedTtsVoice.lang}`);
+}
+
+function refreshVoice() {
+    const voices = window.speechSynthesis.getVoices();
+    console.log('Available TTS voices:', voices.map(v => `${v.name} (${v.lang})`).join(', '));
+    selectedTtsVoice = getNepaliVoice();
+    if (!selectedTtsVoice) {
+        console.warn('No Nepali/Hindi browser voice found yet. Server-side Nepali audio will be used as a fallback.');
+    } else {
+        console.log('Selected TTS voice:', selectedTtsVoice.name, selectedTtsVoice.lang);
+    }
+}
+
+async function playTtsAudio(text) {
+    const normalized = String(text || '').trim();
+    if (!normalized) {
+        alert('सुनाउनको लागि कुनै सारांश उपलब्ध भएन।');
+        return;
+    }
+
+    try {
+        console.log('Requesting TTS audio from', `${API_BASE}/tts`);
+        const resp = await fetch(`${API_BASE}/tts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: normalized })
+        });
+
+        console.log('TTS response', resp.status, resp.headers.get('content-type'));
+        if (!resp.ok) {
+            const err = await resp.json().catch(() => ({ message: 'TTS सेवा असफल भयो' }));
+            throw new Error(err.message || 'TTS सेवा उपलब्ध भएन');
+        }
+
+        const blob = await resp.blob();
+        const audioUrl = URL.createObjectURL(blob);
+        const audio = new Audio(audioUrl);
+        audio.volume = 1;
+        audio.onended = () => URL.revokeObjectURL(audioUrl);
+        audio.onerror = () => {
+            URL.revokeObjectURL(audioUrl);
+            console.warn('TTS audio playback failed');
+            alert('नेपाली आवाज बजाउन असफल भयो।');
+        };
+        await audio.play();
+    } catch (err) {
+        console.error('Server-side TTS failed:', err);
+        alert('नेपाली आवाज उपलब्ध भएन। कृपया पृष्ठ रिफ्रेश गरेर पुन: प्रयास गर्नुहोस्।');
+    }
+}
+
+function speakSummary(text) {
+    const normalized = String(text || '').trim();
+    if (!normalized) {
+        alert('सुनाउनको लागि कुनै सारांश उपलब्ध भएन।');
+        return;
+    }
+    return playTtsAudio(text);
+}
 
 // ── State ──
 const state = { 
@@ -145,6 +247,24 @@ async function fetchAdminStats() {
     }
 }
 
+async function checkBackendStatus() {
+    const statusEl = document.getElementById('backend-status');
+    if (!statusEl) return;
+    try {
+        const resp = await fetch(`${API_BASE}/status`, { cache: 'no-store' });
+        if (!resp.ok) throw new Error(`Status ${resp.status}`);
+        const data = await resp.json();
+        statusEl.textContent = `Backend connected: ${data.app} ${data.version}`;
+        statusEl.classList.remove('offline');
+        statusEl.classList.add('online');
+    } catch (err) {
+        statusEl.textContent = 'Backend unavailable. कृपया `python api.py` चलाउनुहोस् र पृष्ठ रिफ्रेश गर्नुहोस्।';
+        statusEl.classList.remove('online');
+        statusEl.classList.add('offline');
+        console.warn('Backend status check failed', err);
+    }
+}
+
 function updateAdminDashboard(m) {
     const kpiAccuracy = document.querySelector('.kpi-gold .kpi-val');
     if (kpiAccuracy) kpiAccuracy.textContent = (m.accuracy * 100).toFixed(1) + '%';
@@ -192,13 +312,8 @@ const MOCK_NEWS_FALLBACK = [
 ];
 
 // ── DOM ──
-const loginPage    = document.getElementById('login-page');
 const dashPage     = document.getElementById('dashboard-page');
-const loginForm    = document.getElementById('login-form');
-const portalRadios = document.getElementsByName('portal');
-const portalTitle  = document.getElementById('portal-title');
 const navAdmin     = document.getElementById('nav-admin');
-const logoutBtn    = document.getElementById('logout-btn');
 const displayUser  = document.getElementById('display-user');
 const displayPortal= document.getElementById('display-portal');
 const syncTime     = document.getElementById('sync-time');
@@ -208,6 +323,22 @@ const btnScan      = document.getElementById('btn-scan');
 const scanText     = document.getElementById('scan-text');
 const scanResultContainer = document.getElementById('scan-result-container');
 const trendingContainer   = document.getElementById('trending-container');
+const articleModal        = document.getElementById('article-modal');
+const articleModalClose   = document.getElementById('article-modal-close');
+const articleModalTitle   = document.getElementById('article-modal-title');
+const articleModalSource  = document.getElementById('article-modal-source');
+const articleModalDate    = document.getElementById('article-modal-date');
+const articleModalSummary = document.getElementById('article-modal-summary');
+const articleModalContent = document.getElementById('article-modal-content');
+
+if (articleModalClose) {
+    articleModalClose.addEventListener('click', () => window.closeArticleModal());
+}
+if (articleModal) {
+    articleModal.addEventListener('click', e => {
+        if (e.target === articleModal) window.closeArticleModal();
+    });
+}
 
 // ── Init ──
 function init() {
@@ -234,40 +365,6 @@ function updateNepaliDate() {
     const dateStr = now.toLocaleDateString('ne-NP', options);
     document.querySelectorAll('.nepali-date').forEach(el => el.textContent = dateStr);
 }
-
-// ── Login ──
-if (loginForm) {
-    loginForm.addEventListener('submit', e => {
-        e.preventDefault();
-        const username = document.getElementById('username').value;
-        const portal   = document.querySelector('input[name="portal"]:checked').value;
-
-        if (portal === 'admin' && username !== 'admin') {
-            alert('🚫 अनधिकृत: यस पोर्टलका लागि Level-1 प्रशासक प्रमाणपत्र आवश्यक छ।');
-            return;
-        }
-
-        state.isAuthenticated = true;
-        state.isAdmin  = (portal === 'admin');
-        state.username = username || 'अतिथि';
-
-        if (displayUser)   displayUser.textContent   = state.username;
-        if (displayPortal) displayPortal.textContent = state.isAdmin ? 'प्रशासक' : 'नागरिक पहुँच';
-        if (navAdmin)      navAdmin.style.display    = state.isAdmin ? 'flex' : 'none';
-
-        loginPage.classList.remove('active');
-        dashPage.classList.add('active');
-        if (state.isAdmin) fetchAdminStats();
-    });
-}
-
-function doLogout() {
-    state.isAuthenticated = false;
-    state.isAdmin = false;
-    dashPage.classList.remove('active');
-    loginPage.classList.add('active');
-}
-if (logoutBtn) logoutBtn.addEventListener('click', doLogout);
 
 // ── Render Functions ──
 function renderNewsFeed(isManualRefresh = false) {
@@ -299,7 +396,7 @@ function renderNewsFeed(isManualRefresh = false) {
                 <div class="news-card-top">
                     <span class="cat-badge" style="background:${catColor.bg};color:${catColor.color};">${news.category || 'General'}</span>
                     <span class="source-tag">${news.source}</span>
-                    <a href="${news.link}" target="_blank" class="view-src-link">स्रोत</a>
+                    <button type="button" class="view-src-link" onclick="openArticle('${news.link.replace(/'/g, "\\'")}', ${index})">पूर्ण लेख</button>
                 </div>
                 <h3>${news.title}</h3>
                 <p>${news.description ? news.description.substring(0, 150) + '...' : ''}</p>
@@ -307,8 +404,12 @@ function renderNewsFeed(isManualRefresh = false) {
                     <button class="verify-btn" onclick="verifyNews(${index}, this)">
                         <i class="fas fa-search"></i> सत्यापन गर्नुहोस्
                     </button>
+                    <button class="summary-btn" onclick="summarizeNews(${index}, this)">
+                        <i class="fas fa-lightbulb"></i> सारांश
+                    </button>
                     <div id="verdict-res-${index}" style="width:100%;"></div>
                 </div>
+                <div id="summary-res-${index}" class="summary-result"></div>
             `;
             newsContainer.appendChild(card);
         });
@@ -459,37 +560,51 @@ async function handlePrediction(text, container) {
             signal: controller.signal
         });
         clearTimeout(timeout);
+
+        if (!resp.ok) {
+            throw new Error(`API returned ${resp.status}`);
+        }
+
         res = await resp.json();
+        if (!res || res.status === 'error' || !res.verdict) {
+            throw new Error(res?.message || 'Invalid API response');
+        }
     } catch (err) {
-        console.warn("Flask API unavailable, using client-side heuristic:", err.message);
+        console.warn("Flask API unavailable or invalid response, using client-side heuristic:", err.message);
         res = clientSideHeuristic(text);
         usedFallback = true;
     }
 
-    const isFake = res.verdict === "Uncredible";
-    const isUnknown = res.verdict === "Not in Database to Authenticate";
-    const vClass = isFake ? "verdict-uncredible" : (isUnknown ? "verdict-neutral" : "verdict-credible");
-    const icon = isFake ? "🚨" : (isUnknown ? "⚠️" : "✅");
-    const verdictNe = isFake ? "झूटा समाचार" : (isUnknown ? "प्रमाणीकरण असम्भव" : "विश्वसनीय");
+    const verdictRaw = (res && res.verdict) ? res.verdict : 'Not in Database to Authenticate';
+    const verdictKey = verdictRaw.toLowerCase();
+    const isFake = verdictKey.includes('uncredible') || verdictKey.includes('fake') || verdictKey.includes('false');
+    const isCredible = verdictKey.includes('credible') || verdictKey.includes('true');
+    const isUnknown = !isFake && !isCredible;
+
+    const vClass = isFake ? 'verdict-uncredible' : (isUnknown ? 'verdict-neutral' : 'verdict-credible');
+    const icon = isFake ? '🚨' : (isUnknown ? '⚠️' : '✅');
+    const verdictNe = isFake ? 'झूटा समाचार' : (isUnknown ? 'प्रमाणीकरण उपलब्ध छैन' : 'विश्वसनीय');
     const confidenceValue = (typeof res.confidence === 'number') ? res.confidence : null;
     const confidenceText = confidenceValue !== null
         ? `${Math.round(confidenceValue * 100)}% निश्चितता`
-        : "विश्वसनीयता जाँच गर्न सकिएन";
+        : 'पक्का भन्न सकिएन';
     const engineNote = usedFallback
-        ? `<div style="font-size:.72rem;color:#999;margin-top:6px;">⚠️ Offline मोड — Heuristic विश्लेषण (AI मोडेलका लागि Flask सुरु गर्नुहोस्)</div>`
-        : `<div style="font-size:.72rem;color:#16a34a;margin-top:6px;">🤖 AI ML मोडेल (TF-IDF + Logistic Regression)</div>`;
+        ? `<div style="font-size:.72rem;color:#999;margin-top:6px;">⚠️ Heuristic fallback प्रयोग गरियो — Flask चलाउनुहोस् AI prediction का लागि</div>`
+        : `<div style="font-size:.72rem;color:#16a34a;margin-top:6px;">🤖 AI ML मोडेल प्रयोग भयो</div>`;
+
+    const reasonsList = (res.reasons || []).length > 0 ? res.reasons : ['⚠️ पर्याप्त जानकारी उपलब्ध भएन।'];
 
     container.innerHTML = `
         <div class="verdict-box ${vClass}" style="margin-top:10px;">
             <div class="verdict-title">${icon} ${verdictNe} — ${confidenceText}</div>
             <div class="verdict-findings">
                 <strong>विश्लेषण सारांश:</strong>
-                <ul>${(res.reasons || []).map(r => `<li>${r}</li>`).join('')}</ul>
+                <ul>${reasonsList.map(r => `<li>${r}</li>`).join('')}</ul>
             </div>
             ${engineNote}
         </div>
     `;
-    return res.verdict;
+    return verdictRaw;
 }
 
 
@@ -503,7 +618,131 @@ window.verifyNews = async function(index, btnEl) {
     const verdict = await handlePrediction(news.title + " " + (news.description || ""), resContainer);
     
     btnEl.innerHTML = verdict === "Uncredible" ? '🚨 संदिग्ध' : '✅ विश्वसनीय';
+    btnEl.disabled = false;
     addToHistory(news.title, verdict);
+};
+
+window.openArticle = async function(url, index) {
+    if (!url) return;
+    if (!articleModal) return;
+
+    const news = state.news[index] || {};
+    const fallbackTitle = news.title || 'लेख विवरण';
+    const fallbackDescription = news.description || 'पूरा लेख सामग्री उपलब्ध भएन।';
+
+    articleModal.classList.add('active');
+    articleModal.setAttribute('aria-hidden', 'false');
+    articleModalTitle.textContent = 'लेख लोड हुँदैछ...';
+    articleModalSource.textContent = '';
+    articleModalDate.textContent = '';
+    articleModalSummary.innerHTML = '<div class="article-summary-title">AI सारांश</div><div class="article-summary-text">लोड हुँदैछ...</div>';
+    articleModalContent.innerHTML = '<p style="color:#475569;">कृपया केही समय कुर्नुहोस्...</p>';
+
+    try {
+        const data = await fetchScrape(url);
+        const fullText = (data.text || '').trim() || fallbackDescription;
+        const titleText = data.title || fallbackTitle;
+        const sourceHost = (() => {
+            try { return new URL(url).hostname; } catch { return 'source'; }
+        })();
+
+        articleModalTitle.textContent = titleText;
+        articleModalSource.textContent = `Source: ${sourceHost}`;
+        articleModalDate.textContent = data.pubDate ? new Date(data.pubDate).toLocaleString('ne-NP') : '';
+        const modalSummaryText = summarizeText(fullText, 5);
+        articleModalSummary.innerHTML = `
+            <div class="article-summary-title">AI सारांश</div>
+            <div class="article-summary-text">${modalSummaryText}</div>
+            <button class="tts-btn tts-modal-btn" type="button" onclick="speakSummary(${JSON.stringify(modalSummaryText)})">
+                <i class="fas fa-volume-up"></i> सुन्नुहोस्
+            </button>
+        `;
+        articleModalContent.innerHTML = formatArticleText(fullText);
+
+        if (typeof index === 'number' && state.news[index]) {
+            state.news[index].fullText = fullText;
+        }
+    } catch (err) {
+        const sourceHost = (() => {
+            try { return new URL(url).hostname; } catch { return 'source'; }
+        })();
+        articleModalTitle.textContent = fallbackTitle;
+        articleModalSource.textContent = `Source: ${sourceHost}`;
+        articleModalDate.textContent = '';
+        const fallbackSummaryText = summarizeText(fallbackDescription, 5);
+        articleModalSummary.innerHTML = `
+            <div class="article-summary-title">AI सारांश</div>
+            <div class="article-summary-text">${fallbackSummaryText}</div>
+            <button class="tts-btn tts-modal-btn" type="button" onclick="speakSummary(${JSON.stringify(fallbackSummaryText)})">
+                <i class="fas fa-volume-up"></i> सुन्नुहोस्
+            </button>
+        `;
+        articleModalContent.innerHTML = `
+            <p style="color:#475569;">${escapeHtml(fallbackDescription)}</p>
+            <p style="margin-top:16px;color:#b91c1c;">${escapeHtml(err.message || 'लेख लोड गर्न समस्या')}</p>
+        `;
+    }
+};
+
+window.closeArticleModal = function() {
+    if (!articleModal) return;
+    articleModal.classList.remove('active');
+    articleModal.setAttribute('aria-hidden', 'true');
+};
+
+function formatArticleText(text) {
+    const paragraphs = text.split(/\n{2,}/).map(p => p.trim()).filter(p => p.length > 20);
+    if (!paragraphs.length) {
+        return `<p>${escapeHtml(text)}</p>`;
+    }
+    return paragraphs.map(p => `<p>${escapeHtml(p)}</p>`).join('');
+}
+
+function escapeHtml(text) {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function summarizeText(text, sentenceCount = 5) {
+    const normalized = (text || '').replace(/\s+/g, ' ').trim();
+    if (!normalized) return 'सारांश उपलब्ध छैन।';
+    const sentences = normalized.match(/[^।.!?]+[।.!?]+/g) || [normalized];
+    const selected = sentences.slice(0, sentenceCount).join(' ').trim();
+    if (selected.length > 0) {
+        return selected.length > 500 ? selected.slice(0, 500) + '...' : selected;
+    }
+    const words = normalized.split(' ');
+    return words.slice(0, 70).join(' ') + (words.length > 70 ? '...' : '');
+}
+
+window.summarizeNews = function(index, btnEl) {
+    const news = state.news[index];
+    if (!news) return;
+    const summaryContainer = document.getElementById(`summary-res-${index}`);
+    if (!summaryContainer) return;
+
+    btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> सारांश तयार गर्दै...';
+    btnEl.disabled = true;
+
+    const summaryText = summarizeText(news.title + '. ' + (news.description || ''));
+    summaryContainer.innerHTML = `
+        <div class="summary-card">
+            <div class="summary-card-row">
+                <strong>🤖 AI सारांश:</strong>
+                <button class="tts-btn" type="button" onclick="speakSummary(${JSON.stringify(summaryText)})">
+                    <i class="fas fa-volume-up"></i> सुन्नुहोस्
+                </button>
+            </div>
+            <p>${summaryText}</p>
+        </div>
+    `;
+
+    btnEl.innerHTML = '<i class="fas fa-lightbulb"></i> सारांश';
+    btnEl.disabled = false;
 };
 
 // ── Forensic Scans ──
@@ -576,5 +815,6 @@ if (refreshBtn) {
     });
 }
 
+checkBackendStatus();
 init();
 renderHistory();
