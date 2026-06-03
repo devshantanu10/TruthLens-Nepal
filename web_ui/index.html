@@ -11,134 +11,8 @@
 </head>
 <body>
 
-<!-- ===================== LOGIN PAGE ===================== -->
-<div id="login-page" class="page active animate-fade-in">
-
-    <!-- Top Utility Bar -->
-    <div class="top-bar">
-        <div class="top-bar-inner">
-            <span class="nepali-date" id="nepali-date-login">२०८१ वैशाख २१, आइतवार</span>
-            <div class="top-bar-right">
-                <span><i class="fas fa-thermometer-half"></i> काठमाडौं: २८°C</span>
-                <span class="divider-pipe">|</span>
-                <span>USD: १३३.२५ रु</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- Login Header -->
-    <div class="login-main-header">
-        <div class="login-logo-area">
-            <div class="logo-emblem"><img src="logo.png" alt="TruthLens Nepal Logo" class="header-logo-img"></div>
-            <div>
-                <h1 class="login-brand">TruthLens <span>Nepal</span></h1>
-                <p class="login-brand-sub">AI प्रयोग गरी समाचार जाँच</p>
-            </div>
-        </div>
-        <div class="header-trust-badges">
-            <span><i class="fas fa-lock"></i> SSL सुरक्षित</span>
-            <span><i class="fas fa-robot"></i> AI संचालित</span>
-            <span>🇳🇵 नेपाल मानक</span>
-        </div>
-    </div>
-
-    <!-- Breaking News Ticker -->
-    <div class="breaking-ticker">
-        <div class="ticker-label"><i class="fas fa-bolt"></i> ताजा समाचार</div>
-        <div class="ticker-track">
-            <div class="ticker-scroll">
-                <span>TruthLens Nepal मा स्वागत छ — यहाँ नेपाली समाचार जाँच्नुहोस्</span>
-                <span>TruthLens Nepal मा स्वागत छ — यहाँ नेपाली समाचार जाँच्नुहोस्</span>
-            </div>
-        </div>
-    </div>
-
-    <!-- Login Body -->
-    <div class="login-body">
-        <div class="login-card">
-            <div class="login-card-heading">
-                <h2>प्रवेश</h2>
-                <p>सत्यापन सेवा प्रयोग गर्नुस्</p>
-            </div>
-
-            <div class="portal-selector">
-                <label class="portal-opt">
-                    <input type="radio" name="portal" value="citizen" checked>
-                    <span><i class="fas fa-user"></i> नागरिक</span>
-                </label>
-                <label class="portal-opt">
-                    <input type="radio" name="portal" value="admin">
-                    <span><i class="fas fa-shield-alt"></i> प्रशासक</span>
-                </label>
-            </div>
-
-            <div class="google-btn" role="button" tabindex="0">
-                <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" width="20" alt="Google">
-                Google बाट लगइन गर्नुहोस्
-            </div>
-
-            <div class="or-divider"><span>वा</span></div>
-
-            <h4 id="portal-title">नागरिक प्यानल</h4>
-
-            <form id="login-form">
-                <div class="input-group">
-                    <label>प्रयोगकर्ता नाम / इमेल</label>
-                    <div class="input-wrap">
-                        <i class="fas fa-user"></i>
-                        <input type="text" id="username" placeholder="ID वा इमेल लेख्नुहोस्" required>
-                    </div>
-                </div>
-                <div class="input-group">
-                    <label>पासवर्ड</label>
-                    <div class="input-wrap">
-                        <i class="fas fa-lock"></i>
-                        <input type="password" id="password" placeholder="पासवर्ड लेख्नुहोस्" required>
-                    </div>
-                </div>
-                <button type="submit" class="primary-btn" id="login-btn">
-                    <i class="fas fa-unlock-alt"></i> प्रवेश गर्नुहोस्
-                </button>
-            </form>
-
-            <div class="login-footer-note">
-                प्रवेश गर्दा तपाईं हाम्रो नीतिसँग सहमत हुनुहुन्छ।<br>
-                <a href="#">सहायता</a>
-            </div>
-        </div>
-
-        <!-- Side Info -->
-        <div class="login-side">
-            <div class="side-card">
-                <div class="side-card-icon">🔍</div>
-                <h3>AI विश्लेषण</h3>
-                <p>AI प्रयोग गरी समाचार जाँचिन्छ</p>
-            </div>
-            <div class="side-card">
-                <div class="side-card-icon">📰</div>
-                <h3>नेपाली स्रोत</h3>
-                <p>OnlineKhabar, Setopati, Kantipur र अन्य १०+ स्रोत</p>
-            </div>
-            <div class="side-card">
-                <div class="side-card-icon">⚡</div>
-                <h3>तुरुन्त परिणाम</h3>
-                <p>छिटो नतिजा</p>
-            </div>
-            <div class="login-stats">
-                <div class="login-stat"><span class="ls-num">२,४५०+</span><span class="ls-lbl">गरिएका विश्लेषण</span></div>
-                <div class="login-stat"><span class="ls-num">९२.४%</span><span class="ls-lbl">शुद्धता</span></div>
-                <div class="login-stat"><span class="ls-num">१०+</span><span class="ls-lbl">स्रोत</span></div>
-            </div>
-        </div>
-    </div>
-
-    <footer class="login-page-footer">
-        <p>TRUTHLENS NEPAL &copy; २०२६ &nbsp;|&nbsp; समाचार जाँच केन्द्र &nbsp;|&nbsp; सुरक्षित • पारदर्शी • विश्वसनीय</p>
-    </footer>
-</div>
-
 <!-- ===================== DASHBOARD PAGE ===================== -->
-<div id="dashboard-page" class="page">
+<div id="dashboard-page" class="page active">
 
     <!-- Top Utility Bar -->
     <div class="top-bar">
@@ -150,6 +24,7 @@
                 <span id="display-portal-top">नागरिक</span>
             </div>
         </div>
+        <div id="backend-status" class="backend-status offline">पृष्ठ भरिएको छैन: Flask backend चलाउने `python api.py` र पृष्ठ रिफ्रेश गर्नुहोस्।</div>
     </div>
 
     <!-- Main Header -->
@@ -168,7 +43,6 @@
             </div>
             <div class="header-user-actions">
                 <span class="user-tag"><i class="fas fa-user-circle"></i> <span id="display-user">Guest</span></span>
-                <button class="logout-btn-top" id="logout-btn"><i class="fas fa-sign-out-alt"></i> बाहिर जानुहोस्</button>
             </div>
         </div>
     </header>
@@ -177,7 +51,7 @@
     <nav class="category-nav">
         <div class="cat-nav-inner">
             <a href="#" class="cat-item active" data-target="feed"><i class="fas fa-broadcast-tower"></i> समाचार</a>
-            <a href="#" class="cat-item" data-target="scan"><i class="fas fa-search"></i> सत्यापन</a>
+            <a href="#" class="cat-item" data-target="scan"><i class="fas fa-search"></i> जाँच</a>
             <a href="#" class="cat-item" data-target="trending"><i class="fas fa-fire"></i> संदिग्ध</a>
             <a href="#" class="cat-item" data-target="admin" id="nav-admin" style="display:none;"><i class="fas fa-shield-alt"></i> प्रशासक</a>
             <div class="nav-live-badge"><span class="live-dot"></span> LIVE</div>
@@ -201,9 +75,8 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="widget">
-                <div class="widget-title"><i class="fas fa-cog"></i> द्रुत विकल्प</div>
+                <div class="widget-title"><i class="fas fa-cog"></i> छिटो विकल्प</div>
                 <button class="side-action-btn" id="refresh-btn"><i class="fas fa-sync-alt"></i> पुनः लोड</button>
-                <button class="side-action-btn danger" id="logout-btn-side"><i class="fas fa-sign-out-alt"></i> बाहिर जानुहोस्</button>
             </div>
 
             <div class="widget">
@@ -218,7 +91,7 @@
             </div>
 
             <div class="widget">
-                <div class="widget-title"><i class="fas fa-history"></i> हालका सत्यापन</div>
+                <div class="widget-title"><i class="fas fa-history"></i> हालका जाँच</div>
                 <ul id="scan-history" class="scan-history-list"></ul>
             </div>
 
@@ -251,13 +124,13 @@
             <div class="view-content" id="view-scan">
                 <div class="section-hdr">
                     <h2><i class="fas fa-search"></i> सत्यापन</h2>
-                    <p>AI प्रयोग गरी समाचार जाँच</p>
+                    <p>AI प्रयोग गरेर समाचार जाँच</p>
                 </div>
                 <div class="scan-card">
-                    <label class="scan-lbl"><i class="fas fa-paste"></i> यहाँ समाचारको पाठ टाँस्नुहोस् (नेपाली/अंग्रेजी)</label>
+                    <label class="scan-lbl"><i class="fas fa-paste"></i> यहाँ समाचारको पाठ टाँस्नुहोस्</label>
                     <textarea id="scan-text" placeholder="यहाँ शीर्षक वा पाठ टाँस्नुहोस्..."></textarea>
                     <button class="primary-btn" id="btn-scan">
-                        <i class="fas fa-microscope"></i> सत्यापन सुरु गर्नुहोस्
+                        <i class="fas fa-microscope"></i> जाँच सुरु गर्नुहोस्
                     </button>
                     <div id="scan-result-container"></div>
                 </div>
@@ -465,28 +338,36 @@
     </footer>
 </div>
 
+<div id="article-modal" class="article-modal" aria-hidden="true">
+    <div class="article-modal-panel">
+        <div class="article-modal-header">
+            <div>
+                <div id="article-modal-title" class="article-modal-title">Loading article…</div>
+                <div class="article-modal-meta">
+                    <span id="article-modal-source"></span>
+                    <span id="article-modal-date"></span>
+                </div>
+            </div>
+            <button class="close-modal-btn" id="article-modal-close" aria-label="Close article view">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="article-modal-body">
+            <div id="article-modal-summary" class="article-summary-section">AI सारांश यहाँ देखिन्छ।</div>
+            <div id="article-modal-content" class="article-modal-content"></div>
+        </div>
+    </div>
+</div>
+
 <script src="script.js"></script>
 <script>
-    // Sync extra display elements
-    const origForm = document.getElementById('login-form');
-    if (origForm) {
-        origForm.addEventListener('submit', () => {
-            setTimeout(() => {
-                const u = document.getElementById('display-user')?.textContent || 'Guest';
-                const p = document.getElementById('display-portal')?.textContent || '';
-                const ut = document.getElementById('display-user-top');
-                const us = document.getElementById('display-user-side');
-                const pt = document.getElementById('display-portal-top');
-                if (ut) ut.textContent = u;
-                if (us) us.textContent = u;
-                if (pt) pt.textContent = p;
-            }, 150);
-        });
-    }
-    const logoutSide = document.getElementById('logout-btn-side');
-    if (logoutSide) {
-        logoutSide.addEventListener('click', () => document.getElementById('logout-btn')?.click());
-    }
+    // Initialize public state elements
+    const ut = document.getElementById('display-user-top');
+    const us = document.getElementById('display-user-side');
+    const pt = document.getElementById('display-portal-top');
+    if (ut) ut.textContent = 'Guest';
+    if (us) us.textContent = 'Guest';
+    if (pt) pt.textContent = 'साधारण प्रयोगकर्ता';
 
     // Nav: use cat-item class
     document.querySelectorAll('.cat-item').forEach(item => {
