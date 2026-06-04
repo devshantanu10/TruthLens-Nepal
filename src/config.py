@@ -50,6 +50,12 @@ DATA_PATH_FAKE = str(DATA_DIR / "Fake.csv")
 # API Keys (Use environment variables in production)
 NEWSDATA_API_KEY = os.getenv("NEWSDATA_API_KEY", "pub_72186835a6435c44f33161c575a6c38210356")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_API_URL = os.getenv("OPENAI_API_URL", "https://api.openai.com/v1/chat/completions")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
+OPENAI_AUDIO_URL = os.getenv("OPENAI_AUDIO_URL", "https://api.openai.com/v1/audio/speech")
+OPENAI_AUDIO_MODEL = os.getenv("OPENAI_AUDIO_MODEL", "gpt-4o-mini-tts")
+OPENAI_AUDIO_VOICE = os.getenv("OPENAI_AUDIO_VOICE", "alloy")
 
 # Default credentials (CHANGE IN PRODUCTION)
 DEFAULT_CREDENTIALS = {

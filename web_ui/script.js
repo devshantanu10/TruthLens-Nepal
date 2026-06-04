@@ -1,5 +1,15 @@
 // ── Configuration ──
-const API_BASE = 'http://127.0.0.1:5000/api';
+const API_BASE = (() => {
+    try {
+        const origin = window.location.origin;
+        if (origin && /https?:\/\/(127\.0\.0\.1|localhost)(:5000)?$/i.test(origin)) {
+            return `${origin}/api`;
+        }
+    } catch {
+        // ignore invalid origin
+    }
+    return 'http://127.0.0.1:5000/api';
+})();
 
 async function fetchScrape(url) {
     const endpoints = [
@@ -29,78 +39,342 @@ async function fetchScrape(url) {
 }
 
 let selectedTtsVoice = null;
+const ttsState = {
+    voice: null,
+    rate: 1,
+    pitch: 1,
+};
+let speechUtterance = null;
+let ttsAudio = null;
+let ttsAudioUrl = null;
+let currentSpeechText = '';
+let availableSpeechVoices = [];
+let voiceLoadAttempts = 0;
 
-function getNepaliVoice() {
-    if (!window.speechSynthesis) return null;
-    const availableVoices = window.speechSynthesis.getVoices();
-    if (!availableVoices || !availableVoices.length) return null;
-
-    const nepaliVoice = availableVoices.find(v => /nep|ne-NP|nepali/i.test(`${v.name} ${v.lang}`));
-    if (nepaliVoice) return nepaliVoice;
-    const hindiVoice = availableVoices.find(v => /hi|hi-IN|hindi/i.test(`${v.name} ${v.lang}`));
-    return hindiVoice || null;
+function isSpeechSupported() {
+    return 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
 }
 
-function hasSupportedNepaliVoice() {
-    return selectedTtsVoice && /nep|ne-NP|nepali|hi|hi-IN|hindi/i.test(`${selectedTtsVoice.name} ${selectedTtsVoice.lang}`);
+function getDefaultEnglishVoice(voices) {
+    return voices.find(v => /en-|English/i.test(`${v.name} ${v.lang}`)) || voices[0] || null;
 }
 
-function refreshVoice() {
-    const voices = window.speechSynthesis.getVoices();
-    console.log('Available TTS voices:', voices.map(v => `${v.name} (${v.lang})`).join(', '));
-    selectedTtsVoice = getNepaliVoice();
-    if (!selectedTtsVoice) {
-        console.warn('No Nepali/Hindi browser voice found yet. Server-side Nepali audio will be used as a fallback.');
-    } else {
-        console.log('Selected TTS voice:', selectedTtsVoice.name, selectedTtsVoice.lang);
+function loadSpeechVoices() {
+    if (!isSpeechSupported()) return;
+    availableSpeechVoices = window.speechSynthesis.getVoices();
+    if (!availableSpeechVoices.length && voiceLoadAttempts < 5) {
+        voiceLoadAttempts += 1;
+        setTimeout(loadSpeechVoices, 200);
+        return;
+    }
+    if (!availableSpeechVoices.length) {
+        console.warn('No speech voices available from browser.');
+        return;
+    }
+    voiceLoadAttempts = 0;
+    ttsState.voice = ttsState.voice || getDefaultEnglishVoice(availableSpeechVoices);
+    populateVoiceDropdown();
+}
+
+function populateVoiceDropdown() {
+    const select = document.getElementById('tts-voice-select');
+    if (!select) return;
+    select.innerHTML = availableSpeechVoices.map(voice => {
+        const selected = ttsState.voice && voice.name === ttsState.voice.name ? ' selected' : '';
+        return `<option value="${escapeHtml(voice.name)}"${selected}>${escapeHtml(voice.name)} (${escapeHtml(voice.lang)})</option>`;
+    }).join('');
+}
+
+function updateTtsStatus(message) {
+    const status = document.getElementById('tts-status');
+    if (!status) return;
+    status.textContent = message || '';
+}
+
+function updateTtsControlLabels() {
+    const rateLabel = document.getElementById('tts-rate-value');
+    const pitchLabel = document.getElementById('tts-pitch-value');
+    if (rateLabel) rateLabel.textContent = `${ttsState.rate.toFixed(1)}x`;
+    if (pitchLabel) pitchLabel.textContent = `${ttsState.pitch.toFixed(1)}`;
+}
+
+function updateTtsButtons() {
+    const playButton = document.getElementById('tts-play');
+    const pauseButton = document.getElementById('tts-pause');
+    const resumeButton = document.getElementById('tts-resume');
+    const stopButton = document.getElementById('tts-stop');
+    if (!playButton || !pauseButton || !resumeButton || !stopButton) return;
+
+    const { audioPlaying, audioPaused } = getAudioState();
+    const speechPlaying = isSpeechSupported() && window.speechSynthesis.speaking;
+    const speechPaused = isSpeechSupported() && window.speechSynthesis.paused;
+    const playing = audioPlaying || speechPlaying;
+    const paused = audioPaused || speechPaused;
+
+    playButton.disabled = !currentSpeechText || playing;
+    pauseButton.disabled = !playing || paused;
+    resumeButton.disabled = !paused;
+    stopButton.disabled = !playing && !paused;
+}
+
+function releaseAudioUrl() {
+    if (ttsAudioUrl) {
+        URL.revokeObjectURL(ttsAudioUrl);
+        ttsAudioUrl = null;
     }
 }
 
-async function playTtsAudio(text) {
+function cancelSpeech() {
+    if (isSpeechSupported()) {
+        window.speechSynthesis.cancel();
+    }
+    if (ttsAudio) {
+        ttsAudio.pause();
+        ttsAudio.currentTime = 0;
+    }
+    speechUtterance = null;
+    updateTtsButtons();
+}
+
+function getAudioState() {
+    const audioPlaying = ttsAudio && !ttsAudio.paused && !ttsAudio.ended;
+    const audioPaused = ttsAudio && ttsAudio.paused && ttsAudio.currentTime > 0 && !ttsAudio.ended;
+    return { audioPlaying, audioPaused };
+}
+
+async function fetchTtsAudio(text) {
+    const endpoints = [
+        `${API_BASE}/tts`,
+        'http://127.0.0.1:5000/api/tts',
+        'http://localhost:5000/api/tts'
+    ];
+
+    for (const endpoint of endpoints) {
+        try {
+            const resp = await fetch(endpoint, {
+                method: 'POST',
+                mode: 'cors',
+                cache: 'no-store',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            });
+            if (!resp.ok) {
+                const contentType = resp.headers.get('content-type') || '';
+                const body = contentType.includes('application/json') ? await resp.json() : await resp.text();
+                throw new Error(typeof body === 'string' ? body : body.message || `Status ${resp.status}`);
+            }
+            return await resp.blob();
+        } catch (err) {
+            console.warn(`TTS fetch failed from ${endpoint}:`, err.message || err);
+        }
+    }
+    throw new Error('Unable to fetch TTS audio from backend.');
+}
+
+function playNativeSpeech(text) {
+    const normalized = String(text || '').trim();
+    if (!normalized) return false;
+    if (!isSpeechSupported()) return false;
+
+    if (!availableSpeechVoices.length) {
+        loadSpeechVoices();
+    }
+
+    speechUtterance = new SpeechSynthesisUtterance(normalized);
+    speechUtterance.voice = ttsState.voice || getDefaultEnglishVoice(availableSpeechVoices) || null;
+    speechUtterance.volume = 1;
+    speechUtterance.rate = ttsState.rate;
+    speechUtterance.pitch = ttsState.pitch;
+    speechUtterance.lang = speechUtterance.voice?.lang || 'en-US';
+    speechUtterance.onstart = () => updateTtsStatus('Playing via browser speech synthesis...');
+    speechUtterance.onend = () => {
+        updateTtsButtons();
+        updateTtsStatus('Finished speaking.');
+    };
+    speechUtterance.onpause = () => updateTtsStatus('Speech paused.');
+    speechUtterance.onresume = () => updateTtsStatus('Speech resumed.');
+    speechUtterance.onerror = (err) => {
+        console.error('Speech synthesis error', err);
+        updateTtsStatus('Browser speech failed.');
+        updateTtsButtons();
+    };
+
+    window.speechSynthesis.speak(speechUtterance);
+    updateTtsButtons();
+    updateTtsStatus('Queued browser speech synthesis...');
+    return true;
+}
+
+async function speakSummary(text) {
     const normalized = String(text || '').trim();
     if (!normalized) {
         alert('सुनाउनको लागि कुनै सारांश उपलब्ध भएन।');
         return;
     }
+
+    currentSpeechText = normalized;
+    cancelSpeech();
+    updateTtsStatus('Requesting backend TTS...');
 
     try {
-        console.log('Requesting TTS audio from', `${API_BASE}/tts`);
-        const resp = await fetch(`${API_BASE}/tts`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: normalized })
-        });
-
-        console.log('TTS response', resp.status, resp.headers.get('content-type'));
-        if (!resp.ok) {
-            const err = await resp.json().catch(() => ({ message: 'TTS सेवा असफल भयो' }));
-            throw new Error(err.message || 'TTS सेवा उपलब्ध भएन');
-        }
-
-        const blob = await resp.blob();
-        const audioUrl = URL.createObjectURL(blob);
-        const audio = new Audio(audioUrl);
-        audio.volume = 1;
-        audio.onended = () => URL.revokeObjectURL(audioUrl);
-        audio.onerror = () => {
-            URL.revokeObjectURL(audioUrl);
-            console.warn('TTS audio playback failed');
-            alert('नेपाली आवाज बजाउन असफल भयो।');
+        const blob = await fetchTtsAudio(normalized);
+        releaseAudioUrl();
+        ttsAudioUrl = URL.createObjectURL(blob);
+        ttsAudio = new Audio(ttsAudioUrl);
+        ttsAudio.volume = 1;
+        ttsAudio.muted = false;
+        ttsAudio.preload = 'auto';
+        ttsAudio.crossOrigin = 'anonymous';
+        ttsAudio.onended = () => {
+            updateTtsButtons();
+            updateTtsStatus('Finished backend audio.');
         };
-        await audio.play();
+        ttsAudio.onpause = () => updateTtsStatus('Backend audio paused.');
+        ttsAudio.onplay = () => updateTtsStatus('Playing backend audio...');
+        ttsAudio.onerror = (err) => {
+            console.error('Audio playback error', err);
+            updateTtsStatus('Backend audio failed.');
+            updateTtsButtons();
+        };
+        await ttsAudio.play();
+        updateTtsButtons();
+        return;
     } catch (err) {
-        console.error('Server-side TTS failed:', err);
-        alert('नेपाली आवाज उपलब्ध भएन। कृपया पृष्ठ रिफ्रेश गरेर पुन: प्रयास गर्नुहोस्।');
+        console.warn('Backend TTS failed, trying browser speech fallback:', err);
     }
+
+    if (isSpeechSupported()) {
+        updateTtsStatus('Backend TTS failed. Trying browser speech synthesis...');
+        const played = playNativeSpeech(normalized);
+        if (played) return;
+    }
+
+    updateTtsStatus('Voice play failed.');
+    alert('Voice play failed. कृपया ब्याकएण्ड चलाउनुहोस् वा ब्राउजरको आवाज सक्षम छ कि छैन जाँच्नुहोस्।');
+    updateTtsButtons();
 }
 
-function speakSummary(text) {
-    const normalized = String(text || '').trim();
-    if (!normalized) {
-        alert('सुनाउनको लागि कुनै सारांश उपलब्ध भएन।');
+function pauseSpeech() {
+    const { audioPlaying } = getAudioState();
+    if (audioPlaying) {
+        ttsAudio.pause();
+        updateTtsStatus('Backend audio paused.');
+        updateTtsButtons();
         return;
     }
-    return playTtsAudio(text);
+    if (!isSpeechSupported() || !window.speechSynthesis.speaking) return;
+    if (!window.speechSynthesis.paused) {
+        window.speechSynthesis.pause();
+        updateTtsStatus('Browser speech paused.');
+    }
+    updateTtsButtons();
+}
+
+function resumeSpeech() {
+    const { audioPaused } = getAudioState();
+    if (audioPaused) {
+        ttsAudio.play();
+        updateTtsStatus('Resuming backend audio...');
+        updateTtsButtons();
+        return;
+    }
+    if (!isSpeechSupported() || !window.speechSynthesis.paused) return;
+    window.speechSynthesis.resume();
+    updateTtsStatus('Resuming browser speech...');
+    updateTtsButtons();
+}
+
+function stopSpeech() {
+    cancelSpeech();
+    if (ttsAudio) {
+        ttsAudio.pause();
+        ttsAudio.currentTime = 0;
+    }
+    updateTtsStatus('Stopped voice playback.');
+    updateTtsButtons();
+}
+
+function bindTtsControlEvents() {
+    const select = document.getElementById('tts-voice-select');
+    const rateInput = document.getElementById('tts-rate');
+    const pitchInput = document.getElementById('tts-pitch');
+    const playButton = document.getElementById('tts-play');
+    const pauseButton = document.getElementById('tts-pause');
+    const resumeButton = document.getElementById('tts-resume');
+    const stopButton = document.getElementById('tts-stop');
+
+    if (select) {
+        populateVoiceDropdown();
+        select.addEventListener('change', () => {
+            const selected = availableSpeechVoices.find(v => v.name === select.value);
+            if (selected) {
+                ttsState.voice = selected;
+                stopSpeech();
+            }
+        });
+    }
+    if (rateInput) {
+        rateInput.addEventListener('input', () => {
+            ttsState.rate = Number(rateInput.value);
+            updateTtsControlLabels();
+            stopSpeech();
+        });
+    }
+    if (pitchInput) {
+        pitchInput.addEventListener('input', () => {
+            ttsState.pitch = Number(pitchInput.value);
+            updateTtsControlLabels();
+            stopSpeech();
+        });
+    }
+    if (playButton) {
+        playButton.addEventListener('click', () => speakSummary(currentSpeechText));
+    }
+    if (pauseButton) {
+        pauseButton.addEventListener('click', pauseSpeech);
+    }
+    if (resumeButton) {
+        resumeButton.addEventListener('click', resumeSpeech);
+    }
+    if (stopButton) {
+        stopButton.addEventListener('click', stopSpeech);
+    }
+
+    updateTtsControlLabels();
+    updateTtsButtons();
+}
+
+function getTtsControlsHtml() {
+    return `
+        <div class="tts-controls">
+            <div class="tts-model-note">Voice source: browser speech synthesis first, backend TTS if browser voice is unavailable.</div>
+            <div id="tts-status" class="tts-status"></div>
+            <div class="tts-control-row">
+                <label for="tts-voice-select">Browser voice (fallback)</label>
+                <select id="tts-voice-select"></select>
+            </div>
+            <div class="tts-control-row">
+                <label for="tts-rate">Speed <span id="tts-rate-value">${ttsState.rate.toFixed(1)}x</span></label>
+                <input id="tts-rate" type="range" min="0.5" max="2" step="0.1" value="${ttsState.rate}">
+            </div>
+            <div class="tts-control-row">
+                <label for="tts-pitch">Pitch <span id="tts-pitch-value">${ttsState.pitch.toFixed(1)}</span></label>
+                <input id="tts-pitch" type="range" min="0" max="2" step="0.1" value="${ttsState.pitch}">
+            </div>
+            <div class="tts-controls-row">
+                <button id="tts-play" class="tts-btn" type="button">Play</button>
+                <button id="tts-pause" class="tts-btn" type="button" disabled>Pause</button>
+                <button id="tts-resume" class="tts-btn" type="button" disabled>Resume</button>
+                <button id="tts-stop" class="tts-btn" type="button" disabled>Stop</button>
+            </div>
+        </div>
+    `;
+}
+
+function setupSpeechSynthesis() {
+    if (!isSpeechSupported()) return;
+    loadSpeechVoices();
+    window.speechSynthesis.onvoiceschanged = loadSpeechVoices;
 }
 
 // ── State ──
@@ -235,34 +509,49 @@ async function fetchLiveNews(isManualRefresh = false) {
 }
 
 
+const BACKEND_STATUS_ENDPOINTS = [
+    `${API_BASE}/status`,
+    'http://127.0.0.1:5000/api/status',
+    'http://localhost:5000/api/status'
+];
+
 async function fetchAdminStats() {
-    try {
-        const resp = await fetch(`${API_BASE}/status`);
-        const data = await resp.json();
-        if (data.metrics && data.metrics.accuracy) {
-            updateAdminDashboard(data.metrics);
+    for (const endpoint of BACKEND_STATUS_ENDPOINTS) {
+        try {
+            const resp = await fetch(endpoint);
+            if (!resp.ok) continue;
+            const data = await resp.json();
+            if (data.metrics && data.metrics.accuracy) {
+                updateAdminDashboard(data.metrics);
+            }
+            return;
+        } catch (err) {
+            console.warn(`Failed to fetch admin stats from ${endpoint}`, err);
         }
-    } catch (err) {
-        console.warn("Failed to fetch admin stats", err);
     }
 }
 
 async function checkBackendStatus() {
     const statusEl = document.getElementById('backend-status');
     if (!statusEl) return;
-    try {
-        const resp = await fetch(`${API_BASE}/status`, { cache: 'no-store' });
-        if (!resp.ok) throw new Error(`Status ${resp.status}`);
-        const data = await resp.json();
-        statusEl.textContent = `Backend connected: ${data.app} ${data.version}`;
-        statusEl.classList.remove('offline');
-        statusEl.classList.add('online');
-    } catch (err) {
-        statusEl.textContent = 'Backend unavailable. कृपया `python api.py` चलाउनुहोस् र पृष्ठ रिफ्रेश गर्नुहोस्।';
-        statusEl.classList.remove('online');
-        statusEl.classList.add('offline');
-        console.warn('Backend status check failed', err);
+
+    for (const endpoint of BACKEND_STATUS_ENDPOINTS) {
+        try {
+            const resp = await fetch(endpoint, { cache: 'no-store' });
+            if (!resp.ok) throw new Error(`Status ${resp.status}`);
+            const data = await resp.json();
+            statusEl.textContent = `Backend connected: ${data.app} ${data.version}`;
+            statusEl.classList.remove('offline');
+            statusEl.classList.add('online');
+            return;
+        } catch (err) {
+            console.warn(`Backend status check failed for ${endpoint}`, err);
+        }
     }
+
+    statusEl.textContent = 'Backend unavailable, but voice should still work via browser speech synthesis.';
+    statusEl.classList.remove('online');
+    statusEl.classList.add('offline');
 }
 
 function updateAdminDashboard(m) {
@@ -345,6 +634,7 @@ function init() {
     updateSyncTime();
     updateNepaliDate();
 
+    setupSpeechSynthesis();
     fetchLiveNews();
 
     if (state.isAdmin) fetchAdminStats();
@@ -396,9 +686,8 @@ function renderNewsFeed(isManualRefresh = false) {
                 <div class="news-card-top">
                     <span class="cat-badge" style="background:${catColor.bg};color:${catColor.color};">${news.category || 'General'}</span>
                     <span class="source-tag">${news.source}</span>
-                    <button type="button" class="view-src-link" onclick="openArticle('${news.link.replace(/'/g, "\\'")}', ${index})">पूर्ण लेख</button>
                 </div>
-                <h3>${news.title}</h3>
+                <h3><a href="#" class="news-title-link">${escapeHtml(news.title)}</a></h3>
                 <p>${news.description ? news.description.substring(0, 150) + '...' : ''}</p>
                 <div class="card-actions">
                     <button class="verify-btn" onclick="verifyNews(${index}, this)">
@@ -412,6 +701,13 @@ function renderNewsFeed(isManualRefresh = false) {
                 <div id="summary-res-${index}" class="summary-result"></div>
             `;
             newsContainer.appendChild(card);
+            const headlineLink = card.querySelector('.news-title-link');
+            if (headlineLink) {
+                headlineLink.addEventListener('click', event => {
+                    event.preventDefault();
+                    openSummaryModal(index);
+                });
+            }
         });
         
         // Fade-in new cards
@@ -622,64 +918,86 @@ window.verifyNews = async function(index, btnEl) {
     addToHistory(news.title, verdict);
 };
 
-window.openArticle = async function(url, index) {
-    if (!url) return;
+window.openSummaryModal = async function(index) {
     if (!articleModal) return;
 
     const news = state.news[index] || {};
-    const fallbackTitle = news.title || 'लेख विवरण';
-    const fallbackDescription = news.description || 'पूरा लेख सामग्री उपलब्ध भएन।';
+    const titleText = news.title || 'समाचार सारांश';
+    const description = news.description || 'समाचारको छोटो विवरण उपलब्ध भएन।';
+    const sourceHost = news.link ? (() => {
+        try { return new URL(news.link).hostname; } catch { return 'source'; }
+    })() : 'source';
 
     articleModal.classList.add('active');
     articleModal.setAttribute('aria-hidden', 'false');
-    articleModalTitle.textContent = 'लेख लोड हुँदैछ...';
-    articleModalSource.textContent = '';
+    articleModalTitle.textContent = titleText;
+    articleModalSource.textContent = `Source: ${sourceHost}`;
     articleModalDate.textContent = '';
-    articleModalSummary.innerHTML = '<div class="article-summary-title">AI सारांश</div><div class="article-summary-text">लोड हुँदैछ...</div>';
-    articleModalContent.innerHTML = '<p style="color:#475569;">कृपया केही समय कुर्नुहोस्...</p>';
+    articleModalSummary.innerHTML = `
+        <div class="article-summary-title">AI Summary</div>
+        <div class="article-summary-text">Loading summary...</div>
+    `;
+    articleModalContent.innerHTML = `
+        <div class="article-summary-title">Source article</div>
+        <div class="article-summary-text">Loading the source text from the backend...</div>
+    `;
+    articleModal.classList.remove('summary-only');
 
-    try {
-        const data = await fetchScrape(url);
-        const fullText = (data.text || '').trim() || fallbackDescription;
-        const titleText = data.title || fallbackTitle;
-        const sourceHost = (() => {
-            try { return new URL(url).hostname; } catch { return 'source'; }
-        })();
+    const summaryPromise = fetch(`${API_BASE}/summary`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            title: news.title,
+            description: description,
+            source: news.source,
+            url: news.link
+        })
+    });
 
-        articleModalTitle.textContent = titleText;
-        articleModalSource.textContent = `Source: ${sourceHost}`;
-        articleModalDate.textContent = data.pubDate ? new Date(data.pubDate).toLocaleString('ne-NP') : '';
-        const modalSummaryText = summarizeText(fullText, 5);
-        articleModalSummary.innerHTML = `
-            <div class="article-summary-title">AI सारांश</div>
-            <div class="article-summary-text">${modalSummaryText}</div>
-            <button class="tts-btn tts-modal-btn" type="button" onclick="speakSummary(${JSON.stringify(modalSummaryText)})">
-                <i class="fas fa-volume-up"></i> सुन्नुहोस्
-            </button>
-        `;
-        articleModalContent.innerHTML = formatArticleText(fullText);
+    const scrapePromise = fetchScrape(news.link);
 
-        if (typeof index === 'number' && state.news[index]) {
-            state.news[index].fullText = fullText;
+    const [summaryResult, scrapeResult] = await Promise.allSettled([summaryPromise, scrapePromise]);
+
+    let summaryText = '';
+    if (summaryResult.status === 'fulfilled') {
+        try {
+            const data = await summaryResult.value.json();
+            summaryText = data.summary || '';
+        } catch {
+            summaryText = '';
         }
-    } catch (err) {
-        const sourceHost = (() => {
-            try { return new URL(url).hostname; } catch { return 'source'; }
-        })();
-        articleModalTitle.textContent = fallbackTitle;
-        articleModalSource.textContent = `Source: ${sourceHost}`;
-        articleModalDate.textContent = '';
-        const fallbackSummaryText = summarizeText(fallbackDescription, 5);
-        articleModalSummary.innerHTML = `
-            <div class="article-summary-title">AI सारांश</div>
-            <div class="article-summary-text">${fallbackSummaryText}</div>
-            <button class="tts-btn tts-modal-btn" type="button" onclick="speakSummary(${JSON.stringify(fallbackSummaryText)})">
-                <i class="fas fa-volume-up"></i> सुन्नुहोस्
-            </button>
-        `;
+    }
+    if (!summaryText) {
+        summaryText = summarizeText(news.title + '. ' + description, 5);
+    }
+    currentSpeechText = summaryText;
+
+    articleModalSummary.innerHTML = `
+        <div class="article-summary-title">AI Summary</div>
+        <div class="article-summary-text">${escapeHtml(summaryText)}</div>
+        ${getTtsControlsHtml()}
+    `;
+    bindTtsControlEvents();
+
+    if (scrapeResult.status === 'fulfilled') {
+        const fullText = (scrapeResult.value.text || '').trim();
+        if (fullText) {
+            articleModalContent.innerHTML = `
+                <div class="article-summary-title">Source article</div>
+                <div class="article-summary-text">${formatArticleText(fullText)}</div>
+            `;
+        } else {
+            articleModalContent.innerHTML = `
+                <div class="article-summary-title">Source article</div>
+                <div class="article-summary-text">${escapeHtml(description)}</div>
+                <div style="margin-top:12px;color:#b91c1c;font-size:.85rem;">Source text was empty.</div>
+            `;
+        }
+    } else {
         articleModalContent.innerHTML = `
-            <p style="color:#475569;">${escapeHtml(fallbackDescription)}</p>
-            <p style="margin-top:16px;color:#b91c1c;">${escapeHtml(err.message || 'लेख लोड गर्न समस्या')}</p>
+            <div class="article-summary-title">Source article</div>
+            <div class="article-summary-text">${escapeHtml(description)}</div>
+            <div style="margin-top:12px;color:#b91c1c;font-size:.85rem;">Unable to fetch the source article from the backend.</div>
         `;
     }
 };
@@ -687,6 +1005,7 @@ window.openArticle = async function(url, index) {
 window.closeArticleModal = function() {
     if (!articleModal) return;
     articleModal.classList.remove('active');
+    articleModal.classList.remove('summary-only');
     articleModal.setAttribute('aria-hidden', 'true');
 };
 

@@ -5,10 +5,20 @@ import json
 import datetime
 import logging
 import io
+import requests
 from gtts import gTTS
 from src.detector import predict_authenticity, load_model
 from src.fetcher import fetch_news, scrape_article_from_url
-from src.config import APP_NAME, APP_VERSION
+from src.config import (
+    APP_NAME,
+    APP_VERSION,
+    OPENAI_API_KEY,
+    OPENAI_API_URL,
+    OPENAI_MODEL,
+    OPENAI_AUDIO_URL,
+    OPENAI_AUDIO_MODEL,
+    OPENAI_AUDIO_VOICE
+)
 
 app = Flask(__name__, static_folder='web_ui', static_url_path='')
 CORS(app)
@@ -100,12 +110,100 @@ def scrape():
         logger.exception("Error scraping URL: %s", url)
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/api/summary', methods=['POST'])
+def summarize_news():
+    data = request.get_json(silent=True) or {}
+    title = (data.get('title') or '').strip()
+    description = (data.get('description') or '').strip()
+    source = (data.get('source') or '').strip()
+    url = (data.get('url') or '').strip()
+
+    if not title and not description:
+        return jsonify({"status": "error", "message": "No title or description provided"}), 400
+
+    prompt = (
+        "You are a helpful news summarization assistant. "
+        "Given a news headline and preview text, write a medium-length summary in Nepali. "
+        "Include the main facts, context, and any relevant details, using 4-6 sentences. "
+        "If the preview text is in English, still answer in Nepali while preserving the meaning. "
+        f"Headline: {title}\n"
+        f"Preview: {description}\n"
+        f"Source: {source or 'Unknown'}\n"
+        f"URL: {url or 'Unknown'}\n"
+        "Return only the summary text."
+    )
+
+    if not OPENAI_API_KEY:
+        return jsonify({"status": "error", "message": "OpenAI API key is not configured"}), 500
+
+    try:
+        resp = requests.post(
+            OPENAI_API_URL,
+            headers={
+                'Authorization': f'Bearer {OPENAI_API_KEY}',
+                'Content-Type': 'application/json'
+            },
+            json={
+                'model': OPENAI_MODEL,
+                'messages': [
+                    {'role': 'system', 'content': 'You summarize news articles effectively in Nepali with good context.'},
+                    {'role': 'user', 'content': prompt}
+                ],
+                'temperature': 0.35,
+                'max_tokens': 220,
+                'top_p': 1,
+            },
+            timeout=25
+        )
+        resp.raise_for_status()
+        content = resp.json()
+        summary = content.get('choices', [{}])[0].get('message', {}).get('content', '')
+        if not summary:
+            raise ValueError('Empty summary from LLM')
+
+        return jsonify({"status": "success", "summary": summary.strip()})
+    except Exception as e:
+        logger.exception('LLM summary request failed')
+        fallback = (title + ' ' + description).strip()
+        fallback = fallback[:320] + ('...' if len(fallback) > 320 else '')
+        return jsonify({"status": "success", "summary": fallback})
+
 @app.route('/api/tts', methods=['POST'])
 def generate_tts():
     data = request.get_json(silent=True) or {}
     text = (data.get('text') or '').strip()
     if not text:
         return jsonify({"status": "error", "message": "No text provided"}), 400
+
+    # Use OpenAI audio generation if configured, otherwise fall back to gTTS
+    if OPENAI_API_KEY and OPENAI_AUDIO_URL:
+        try:
+            resp = requests.post(
+                OPENAI_AUDIO_URL,
+                headers={
+                    'Authorization': f'Bearer {OPENAI_API_KEY}',
+                    'Content-Type': 'application/json',
+                    'Accept': 'audio/mpeg'
+                },
+                json={
+                    'model': OPENAI_AUDIO_MODEL,
+                    'voice': OPENAI_AUDIO_VOICE,
+                    'input': text,
+                'format': 'mp3'
+                },
+                timeout=30
+            )
+            resp.raise_for_status()
+            audio_bytes = io.BytesIO(resp.content)
+            audio_bytes.seek(0)
+            return send_file(
+                audio_bytes,
+                mimetype='audio/mpeg',
+                as_attachment=False,
+                download_name='tts-nepali.mp3'
+            )
+        except Exception as e:
+            logger.warning('OpenAI audio generation failed, falling back to gTTS: %s', e)
 
     try:
         tts = gTTS(text=text, lang='ne')
