@@ -372,12 +372,10 @@ function bindTtsControlEvents() {
 function getTtsControlsHtml() {
     return `
         <div class="tts-controls">
-            <div class="tts-model-note">
-                <i class="fas fa-microphone-alt"></i> 🎙️ TruthLens Nepal — समाचार रेडियो वाचन
-            </div>
+            <div class="tts-model-note">🎙️ TruthLens Nepal — AI समाचार वाचन</div>
             <div id="tts-status" class="tts-status"></div>
             <div class="tts-control-row">
-                <label for="tts-voice-select"><i class="fas fa-user-tie"></i> आवाज छनोट</label>
+                <label for="tts-voice-select">आवाज छनोट</label>
                 <select id="tts-voice-select"></select>
             </div>
             <div class="tts-control-row">
@@ -389,18 +387,10 @@ function getTtsControlsHtml() {
                 <input id="tts-pitch" type="range" min="0.5" max="1.8" step="0.05" value="${ttsState.pitch}">
             </div>
             <div class="tts-controls-row">
-                <button id="tts-play" class="tts-btn reporter-play-btn" type="button">
-                    <i class="fas fa-broadcast-tower"></i> सुन्नुहोस्
-                </button>
-                <button id="tts-pause" class="tts-btn" type="button" disabled>
-                    <i class="fas fa-pause"></i> रोक्नुहोस्
-                </button>
-                <button id="tts-resume" class="tts-btn" type="button" disabled>
-                    <i class="fas fa-play"></i> जारी राख्नुहोस्
-                </button>
-                <button id="tts-stop" class="tts-btn tts-stop-btn" type="button" disabled>
-                    <i class="fas fa-stop"></i> बन्द गर्नुहोस्
-                </button>
+                <button id="tts-play" class="tts-btn" type="button"><i class="fas fa-volume-up"></i> सुन्नुहोस्</button>
+                <button id="tts-pause" class="tts-btn" type="button" disabled><i class="fas fa-pause"></i> रोक्नुहोस्</button>
+                <button id="tts-resume" class="tts-btn" type="button" disabled><i class="fas fa-play"></i> जारी</button>
+                <button id="tts-stop" class="tts-btn" type="button" disabled><i class="fas fa-stop"></i> बन्द</button>
             </div>
         </div>
     `;
@@ -723,14 +713,12 @@ function renderNewsFeed(isManualRefresh = false) {
             const isSuspect = news.category === 'संदिग्ध' || news.category === 'misinformation';
             card.className = 'news-card animate-fade-in' + (isSuspect ? ' card-suspect' : '');
             const catColor = getCategoryColor(news.category);
-            const newsUrl = news.link && news.link !== '#' ? news.link : null;
             card.innerHTML = `
                 <div class="news-card-top">
                     <span class="cat-badge" style="background:${catColor.bg};color:${catColor.color};">${news.category || 'General'}</span>
-                    ${newsUrl ? `<span class="source-tag">${escapeHtml(news.source || '')}</span>` : ''}
                 </div>
-                <h3><a href="${newsUrl ? escapeHtml(newsUrl) : '#'}" class="news-title-link" ${newsUrl ? 'target="_self"' : ''}>${escapeHtml(news.title)}</a></h3>
-                <p>${news.description ? news.description.substring(0, 180) + '...' : ''}</p>
+                <h3><a href="#" class="news-title-link">${escapeHtml(news.title)}</a></h3>
+                <p>${news.description ? news.description.substring(0, 150) + '...' : ''}</p>
                 <div class="card-actions">
                     <button class="verify-btn" onclick="verifyNews(${index}, this)">
                         <i class="fas fa-search"></i> सत्यापन गर्नुहोस्
@@ -738,19 +726,13 @@ function renderNewsFeed(isManualRefresh = false) {
                     <button class="summary-btn" onclick="summarizeNews(${index}, this)">
                         <i class="fas fa-lightbulb"></i> सारांश
                     </button>
-                    ${newsUrl ? `<a href="${escapeHtml(newsUrl)}" target="_self" class="read-more-link"><i class="fas fa-external-link-alt"></i> स्रोत पढ्नुहोस्</a>` : ''}
                     <div id="verdict-res-${index}" style="width:100%;"></div>
                 </div>
                 <div id="summary-res-${index}" class="summary-result"></div>
             `;
             newsContainer.appendChild(card);
             const headlineLink = card.querySelector('.news-title-link');
-            if (headlineLink && newsUrl) {
-                headlineLink.addEventListener('click', event => {
-                    event.preventDefault();
-                    window.open(newsUrl, '_self');
-                });
-            } else if (headlineLink) {
+            if (headlineLink) {
                 headlineLink.addEventListener('click', event => {
                     event.preventDefault();
                     openSummaryModal(index);
@@ -1157,14 +1139,14 @@ window.summarizeNews = async function(index, btnEl) {
     }
 
     summaryContainer.innerHTML = `
-        <div class="summary-card reporter-summary">
+        <div class="summary-card">
             <div class="summary-card-row">
-                <span class="reporter-badge"><i class="fas fa-broadcast-tower"></i> AI समाचार सारांश</span>
-                <button class="tts-btn reporter-play-btn" type="button" id="tts-btn-${index}">
-                    <i class="fas fa-microphone-alt"></i> रेडियो वाचन
+                <strong>🤖 AI सारांश:</strong>
+                <button class="tts-btn" type="button" id="tts-btn-${index}">
+                    <i class="fas fa-volume-up"></i> सुन्नुहोस्
                 </button>
             </div>
-            <div class="reporter-summary-body">${escapeHtml(summaryText).replace(/\. /g, '.\n\n')}</div>
+            <p style="white-space:pre-wrap;line-height:1.8;">${escapeHtml(summaryText)}</p>
         </div>
     `;
     
@@ -1471,14 +1453,14 @@ window.summarizeFbPost = async function(index, btnEl) {
     post.summary = summaryText;
 
     summaryContainer.innerHTML = `
-        <div class="summary-card reporter-summary" style="margin-top:10px;">
+        <div class="summary-card" style="margin-top:10px;">
             <div class="summary-card-row">
-                <span class="reporter-badge"><i class="fas fa-broadcast-tower"></i> AI फेसबुक सारांश</span>
-                <button class="tts-btn reporter-play-btn" type="button" id="fb-tts-btn-${index}">
-                    <i class="fas fa-microphone-alt"></i> रेडियो वाचन
+                <strong>🤖 AI फेसबुक पोस्ट सारांश:</strong>
+                <button class="tts-btn" type="button" id="fb-tts-btn-${index}">
+                    <i class="fas fa-volume-up"></i> सुन्नुहोस्
                 </button>
             </div>
-            <div class="reporter-summary-body">${escapeHtml(summaryText).replace(/\. /g, '.\n\n')}</div>
+            <p style="white-space:pre-wrap;line-height:1.8;">${escapeHtml(summaryText)}</p>
         </div>
     `;
     
