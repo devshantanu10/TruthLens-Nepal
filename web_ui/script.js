@@ -385,6 +385,7 @@ const state = {
     history: [],
     news: [],          // Current page slice shown in feed
     newsPool: [],      // Full pool of all fetched articles
+    facebookPosts: [], // List of Facebook posts
     feedPage: 0,       // Current page index in the pool
     feedPageSize: 10,  // Articles shown per page
     categories: ["General", "Politics", "Business", "Sports", "International", "Global"]
@@ -637,6 +638,11 @@ function init() {
     setupSpeechSynthesis();
     fetchLiveNews();
 
+    // Seed and render Facebook feed
+    state.facebookPosts = [...MOCK_FACEBOOK_POSTS];
+    renderFacebookFeed();
+    setupFacebookImport();
+
     if (state.isAdmin) fetchAdminStats();
 
     setInterval(updateSyncTime, 1000);
@@ -685,7 +691,6 @@ function renderNewsFeed(isManualRefresh = false) {
             card.innerHTML = `
                 <div class="news-card-top">
                     <span class="cat-badge" style="background:${catColor.bg};color:${catColor.color};">${news.category || 'General'}</span>
-                    <span class="source-tag">${news.source}</span>
                 </div>
                 <h3><a href="#" class="news-title-link">${escapeHtml(news.title)}</a></h3>
                 <p>${news.description ? news.description.substring(0, 150) + '...' : ''}</p>
@@ -1038,7 +1043,7 @@ function summarizeText(text, sentenceCount = 5) {
     return words.slice(0, 70).join(' ') + (words.length > 70 ? '...' : '');
 }
 
-window.summarizeNews = function(index, btnEl) {
+window.summarizeNews = async function(index, btnEl) {
     const news = state.news[index];
     if (!news) return;
     const summaryContainer = document.getElementById(`summary-res-${index}`);
@@ -1047,18 +1052,40 @@ window.summarizeNews = function(index, btnEl) {
     btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> सारांश तयार गर्दै...';
     btnEl.disabled = true;
 
-    const summaryText = summarizeText(news.title + '. ' + (news.description || ''));
+    let summaryText = '';
+    try {
+        const resp = await fetch(`${API_BASE}/summary`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: news.title,
+                description: news.description,
+                source: news.source,
+                url: news.link
+            })
+        });
+        const data = await resp.json();
+        summaryText = data.summary || summarizeText(news.title + '. ' + (news.description || ''));
+    } catch (e) {
+        console.error("AI Summary failed, using fallback:", e);
+        summaryText = summarizeText(news.title + '. ' + (news.description || ''));
+    }
+
     summaryContainer.innerHTML = `
         <div class="summary-card">
             <div class="summary-card-row">
                 <strong>🤖 AI सारांश:</strong>
-                <button class="tts-btn" type="button" onclick="speakSummary(${JSON.stringify(summaryText)})">
+                <button class="tts-btn" type="button" id="tts-btn-${index}">
                     <i class="fas fa-volume-up"></i> सुन्नुहोस्
                 </button>
             </div>
-            <p>${summaryText}</p>
+            <p>${escapeHtml(summaryText)}</p>
         </div>
     `;
+    
+    document.getElementById(`tts-btn-${index}`).addEventListener('click', () => {
+        speakSummary(summaryText);
+    });
 
     btnEl.innerHTML = '<i class="fas fa-lightbulb"></i> सारांश';
     btnEl.disabled = false;
@@ -1137,3 +1164,243 @@ if (refreshBtn) {
 checkBackendStatus();
 init();
 renderHistory();
+
+// ── Facebook Section Logic ──
+
+const MOCK_FACEBOOK_POSTS = [
+    {
+        author: "नेपाली खबर संजाल",
+        isVerified: true,
+        time: "३ घण्टा पहिले",
+        body: "⚠️⚠️ ब्रेकिङ न्यूज: नेपाल सरकारले आगामी आर्थिक वर्षदेखि देशभरीका सबै सामुदायिक विद्यालयहरूमा विद्यार्थीहरूलाई नि:शुल्क ल्यापटप वितरण गर्ने घोषणा गरेको छ। यो खबर तुरुन्तै सबैलाई सेयर गरौं!",
+        likes: 1240,
+        comments: 342,
+        shares: 89,
+        verdict: null,
+        summary: null
+    },
+    {
+        author: "मौसम अपडेट नेपाल",
+        isVerified: false,
+        time: "५ घण्टा पहिले",
+        body: "जल तथा मौसम विज्ञान विभागका अनुसार आज राति पूर्वी र मध्य नेपालका पहाडी भूभागमा भारी वर्षा हुने र तराईका क्षेत्रमा हुरीबतास चल्ने सम्भावना छ। सतर्क रहन सबैमा अनुरोध छ।",
+        likes: 852,
+        comments: 120,
+        shares: 243,
+        verdict: null,
+        summary: null
+    },
+    {
+        author: "भाइरल नेपाल समाचार",
+        isVerified: false,
+        time: "१ दिन पहिले",
+        body: "भर्खरै काठमाडौंबाट बाहिरियो बिष्फोटक खबर: मध्यरातमा दरबारमार्गमा हिँडिरहेको बेला एक व्यक्तिले अचम्मको सुनौलो चरा फेला पारेका छन्। यो चरा घरमा राख्दा करोडपति भइने दाबी गरिएको छ, हेर्नुहोस् भिडियो लिंकमा!",
+        likes: 3450,
+        comments: 890,
+        shares: 1100,
+        verdict: null,
+        summary: null
+    },
+    {
+        author: "कान्तिपुर खबर",
+        isVerified: true,
+        time: "२ दिन पहिले",
+        body: "नेपाल राष्ट्र बैंकले चालु आर्थिक वर्षको नयाँ मौद्रिक नीति सार्वजनिक गरेको छ। जसमा नीतिगत दर ६.५ प्रतिशतबाट घटाएर ६ प्रतिशत कायम गरिएको छ जसले बैंकको ब्याजदरमा कमी ल्याउन सहयोग गर्नेछ।",
+        likes: 1890,
+        comments: 420,
+        shares: 512,
+        verdict: null,
+        summary: null
+    }
+];
+
+function renderFacebookFeed() {
+    const fbContainer = document.getElementById('facebook-container');
+    if (!fbContainer) return;
+    
+    fbContainer.innerHTML = '';
+    
+    if (state.facebookPosts.length === 0) {
+        fbContainer.innerHTML = '<div class="all-clear">✅ कुनै फेसबुक पोस्ट उपलब्ध छैन।</div>';
+        return;
+    }
+    
+    state.facebookPosts.forEach((post, index) => {
+        const card = document.createElement('div');
+        card.className = 'fb-post-card animate-fade-in';
+        
+        const verifiedBadge = post.isVerified 
+            ? '<span class="fb-verified-badge"><i class="fas fa-check-circle"></i></span>' 
+            : '';
+            
+        const initials = post.author.substring(0, 2);
+        
+        card.innerHTML = `
+            <div class="fb-post-header">
+                <div class="fb-profile-pic">${escapeHtml(initials)}</div>
+                <div class="fb-header-info">
+                    <div class="fb-author-name">${escapeHtml(post.author)} ${verifiedBadge}</div>
+                    <div class="fb-post-time">${escapeHtml(post.time)}</div>
+                </div>
+                <div class="fb-logo-watermark"><i class="fab fa-facebook"></i></div>
+            </div>
+            
+            <div class="fb-post-body">${escapeHtml(post.body)}</div>
+            
+            <div class="fb-post-interactions">
+                <div class="fb-reactions-left">
+                    <span class="fb-reaction-bubble fb-bubble-like"><i class="fas fa-thumbs-up"></i></span>
+                    <span class="fb-reaction-bubble fb-bubble-love"><i class="fas fa-heart"></i></span>
+                    <span class="fb-reaction-bubble fb-bubble-wow"><i class="fas fa-surprise"></i></span>
+                    <span>${post.likes} reactions</span>
+                </div>
+                <div>
+                    <span>${post.comments} comments • ${post.shares} shares</span>
+                </div>
+            </div>
+            
+            <div class="fb-actions-bar">
+                <button class="fb-action-item"><i class="far fa-thumbs-up"></i> Like</button>
+                <button class="fb-action-item"><i class="far fa-comment"></i> Comment</button>
+                <button class="fb-action-item"><i class="far fa-share-square"></i> Share</button>
+            </div>
+            
+            <div class="fb-verify-block">
+                <div class="fb-verify-btn-wrap">
+                    <button class="fb-verify-main-btn" onclick="verifyFbPost(${index}, this)">
+                        <i class="fas fa-shield-alt"></i> सत्यता जाँच
+                    </button>
+                    <button class="fb-verify-summary-btn" onclick="summarizeFbPost(${index}, this)">
+                        <i class="fas fa-lightbulb"></i> एआई सारांश
+                    </button>
+                </div>
+                <div id="fb-verdict-res-${index}" class="fb-verdict-res"></div>
+                <div id="fb-summary-res-${index}" class="fb-summary-res"></div>
+            </div>
+        `;
+        fbContainer.appendChild(card);
+    });
+}
+
+function setupFacebookImport() {
+    const btnImport = document.getElementById('btn-fb-import');
+    if (!btnImport) return;
+    
+    btnImport.addEventListener('click', async () => {
+        const urlInput = document.getElementById('fb-post-url');
+        const authorInput = document.getElementById('fb-post-author');
+        const textInput = document.getElementById('fb-post-text');
+        
+        const text = textInput ? textInput.value.trim() : '';
+        const author = authorInput && authorInput.value.trim() ? authorInput.value.trim() : 'Anonymous Poster';
+        const url = urlInput ? urlInput.value.trim() : '';
+        
+        if (!text) {
+            alert('कृपया फेसबुक पोस्टको विवरण वा समाचारको पाठ राख्नुहोस्।');
+            return;
+        }
+        
+        btnImport.innerHTML = '<i class="fas fa-spinner fa-spin"></i> आयात गर्दै...';
+        btnImport.disabled = true;
+        
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        const newPost = {
+            author: author,
+            isVerified: false,
+            time: "भर्खरै",
+            body: text,
+            likes: Math.floor(Math.random() * 50) + 1,
+            comments: Math.floor(Math.random() * 10),
+            shares: Math.floor(Math.random() * 5),
+            verdict: null,
+            summary: null
+        };
+        
+        state.facebookPosts.unshift(newPost);
+        renderFacebookFeed();
+        
+        if (textInput) textInput.value = '';
+        if (authorInput) authorInput.value = '';
+        if (urlInput) urlInput.value = '';
+        
+        btnImport.innerHTML = '<i class="fas fa-download"></i> पोस्ट आयात र जाँच गर्नुहोस्';
+        btnImport.disabled = false;
+        
+        const fbContainer = document.getElementById('facebook-container');
+        if (fbContainer && fbContainer.firstChild) {
+            fbContainer.firstChild.scrollIntoView({ behavior: 'smooth' });
+            const verifyBtn = fbContainer.firstChild.querySelector('.fb-verify-main-btn');
+            if (verifyBtn) {
+                window.verifyFbPost(0, verifyBtn);
+            }
+        }
+    });
+}
+
+window.verifyFbPost = async function(index, btnEl) {
+    const post = state.facebookPosts[index];
+    if (!post) return;
+    const resContainer = document.getElementById(`fb-verdict-res-${index}`);
+    if (!resContainer) return;
+    
+    btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> जाँच भइरहेको छ...';
+    btnEl.disabled = true;
+    
+    const verdict = await handlePrediction(post.body, resContainer);
+    
+    post.verdict = verdict;
+    btnEl.innerHTML = verdict === "Uncredible" ? '🚨 संदिग्ध' : '✅ विश्वसनीय';
+    btnEl.disabled = false;
+    addToHistory("Facebook: " + post.author, verdict);
+};
+
+window.summarizeFbPost = async function(index, btnEl) {
+    const post = state.facebookPosts[index];
+    if (!post) return;
+    const summaryContainer = document.getElementById(`fb-summary-res-${index}`);
+    if (!summaryContainer) return;
+
+    btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> सारांश तयार गर्दै...';
+    btnEl.disabled = true;
+
+    let summaryText = '';
+    try {
+        const resp = await fetch(`${API_BASE}/summary`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: "Facebook Post by " + post.author,
+                description: post.body,
+                source: "Facebook",
+                url: "#"
+            })
+        });
+        const data = await resp.json();
+        summaryText = data.summary || summarizeText(post.body);
+    } catch (e) {
+        console.error("AI Summary failed, using fallback:", e);
+        summaryText = summarizeText(post.body);
+    }
+
+    post.summary = summaryText;
+
+    summaryContainer.innerHTML = `
+        <div class="summary-card" style="margin-top:10px;">
+            <div class="summary-card-row">
+                <strong>🤖 AI फेसबुक पोस्ट सारांश:</strong>
+                <button class="tts-btn" type="button" id="fb-tts-btn-${index}">
+                    <i class="fas fa-volume-up"></i> सुन्नुहोस्
+                </button>
+            </div>
+            <p>${escapeHtml(summaryText)}</p>
+        </div>
+    `;
+    
+    document.getElementById(`fb-tts-btn-${index}`).addEventListener('click', () => {
+        speakSummary(summaryText);
+    });
+
+    btnEl.innerHTML = '<i class="fas fa-lightbulb"></i> सारांश';
+    btnEl.disabled = false;
+};

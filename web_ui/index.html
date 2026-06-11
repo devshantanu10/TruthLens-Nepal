@@ -51,6 +51,7 @@
     <nav class="category-nav">
         <div class="cat-nav-inner">
             <a href="#" class="cat-item active" data-target="feed"><i class="fas fa-broadcast-tower"></i> समाचार</a>
+            <a href="#" class="cat-item" data-target="facebook"><i class="fab fa-facebook"></i> फेसबुक फिड</a>
             <a href="#" class="cat-item" data-target="scan"><i class="fas fa-search"></i> जाँच</a>
             <a href="#" class="cat-item" data-target="trending"><i class="fas fa-fire"></i> संदिग्ध</a>
             <a href="#" class="cat-item" data-target="admin" id="nav-admin" style="display:none;"><i class="fas fa-shield-alt"></i> प्रशासक</a>
@@ -118,6 +119,36 @@
                     <p class="live-line"><span class="live-dot"></span> LIVE — अन्तिम अपडेट: <span id="sync-time"></span></p>
                 </div>
                 <div id="news-container"></div>
+            </div>
+
+            <!-- Facebook Feed -->
+            <div class="view-content" id="view-facebook">
+                <div class="section-hdr">
+                    <h2><i class="fab fa-facebook"></i> फेसबुक समाचार फिड</h2>
+                    <p>फेसबुकमा भाइरल भएका समाचारहरू र तिनको सत्यता जाँच</p>
+                </div>
+                <!-- Facebook Import / Simulation Form -->
+                <div class="fb-import-card">
+                    <h3><i class="fas fa-plus-circle"></i> फेसबुक पोस्ट आयात गर्नुहोस्</h3>
+                    <p>कुनै पनि फेसबुक पोस्टको लिंक वा विवरण राखेर प्रणालीमा थप्नुहोस् र सत्यता जाँच गर्नुहोस्।</p>
+                    <div class="fb-import-form">
+                        <div class="input-wrap">
+                            <i class="fab fa-facebook-f"></i>
+                            <input type="text" id="fb-post-url" placeholder="https://www.facebook.com/posts/...">
+                        </div>
+                        <div class="input-wrap mt-2">
+                            <i class="fas fa-user"></i>
+                            <input type="text" id="fb-post-author" placeholder="पेज वा प्रयोगकर्ताको नाम (उदा: News Nepal)">
+                        </div>
+                        <textarea id="fb-post-text" placeholder="फेसबुक पोस्टमा भएको समाचारको मुख्य विवरण यहाँ लेख्नुहोस् वा टाँस्नुहोस्..."></textarea>
+                        <button class="primary-btn fb-btn" id="btn-fb-import">
+                            <i class="fas fa-download"></i> पोस्ट आयात र जाँच गर्नुहोस्
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="fb-feed-title"><i class="fas fa-stream"></i> भाइरल फेसबुक समाचार फिड</div>
+                <div id="facebook-container"></div>
             </div>
 
             <!-- Forensic Scan -->

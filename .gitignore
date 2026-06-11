@@ -7,3 +7,5 @@ __pycache__/
 outputs/*.joblib
 outputs/*.json
 !outputs/metrics.json
+desktop.ini
+
