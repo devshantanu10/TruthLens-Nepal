@@ -19,6 +19,11 @@ from src.config import (
     OPENAI_AUDIO_MODEL,
     OPENAI_AUDIO_VOICE
 )
+from src.cache import (
+    init_db,
+    get_cached_prediction, set_cached_prediction,
+    get_cached_summary, set_cached_summary
+)
 
 app = Flask(__name__, static_folder='web_ui', static_url_path='')
 CORS(app)
@@ -26,6 +31,9 @@ CORS(app)
 # Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Initialise SQLite cache (creates data/cache.db if it does not exist)
+init_db()
 
 # Load model globally (best-effort)
 try:
@@ -79,17 +87,36 @@ def predict():
     text = data.get('text', '')
     if not text:
         return jsonify({"status": "error", "message": "No text provided"}), 400
-    
+
+    # ── Cache lookup ──────────────────────────────────────────────────────────
+    cached = get_cached_prediction(text)
+    if cached:
+        logger.info("Prediction served from cache")
+        return jsonify({
+            "verdict":         cached['verdict'],
+            "confidence":      cached['confidence'],
+            "reasons":         cached['reasons'],
+            "heuristic_score": cached['heuristic_score'],
+            "parties":         cached['parties'],
+            "timestamp":       datetime.datetime.now().isoformat(),
+            "cached":          True,
+        })
+    # ─────────────────────────────────────────────────────────────────────────
+
     # Pass live_news=None to skip live cross-reference (too slow for real-time)
     verdict, score, reasons, h_score, parties = predict_authenticity(text, pipeline, live_news=None)
-    
+
+    # Persist result so the next identical request is instant
+    set_cached_prediction(text, verdict, score, reasons, float(h_score), parties)
+
     return jsonify({
-        "verdict": verdict,
-        "confidence": float(score) if score is not None else None,
-        "reasons": reasons,
+        "verdict":         verdict,
+        "confidence":      float(score) if score is not None else None,
+        "reasons":         reasons,
         "heuristic_score": float(h_score),
-        "parties": parties,
-        "timestamp": datetime.datetime.now().isoformat() 
+        "parties":         parties,
+        "timestamp":       datetime.datetime.now().isoformat(),
+        "cached":          False,
     })
 
 @app.route('/api/scrape', methods=['GET', 'POST'])
@@ -121,10 +148,21 @@ def summarize_news():
     if not title and not description:
         return jsonify({"status": "error", "message": "No title or description provided"}), 400
 
+    # Use title + description as the cache key (URL/source can change without affecting content)
+    cache_key = f"{title}\n{description}"
+
+    # ── Cache lookup ──────────────────────────────────────────────────────────
+    cached_summary = get_cached_summary(cache_key)
+    if cached_summary:
+        logger.info("Summary served from cache")
+        return jsonify({"status": "success", "summary": cached_summary, "cached": True})
+    # ─────────────────────────────────────────────────────────────────────────
+
     prompt = (
-        "You are a helpful news summarization assistant. "
-        "Given a news headline and preview text, write a medium-length summary in Nepali. "
-        "Include the main facts, context, and any relevant details, using 4-6 sentences. "
+        "You are a professional Nepali news broadcaster. "
+        "Given a news headline and preview text, write a detailed, multi-sentence summary in Nepali. "
+        "Include the main facts, context, background, and any relevant details using 6-8 sentences. "
+        "Write in a clear, informative broadcaster style. "
         "If the preview text is in English, still answer in Nepali while preserving the meaning. "
         f"Headline: {title}\n"
         f"Preview: {description}\n"
@@ -146,11 +184,11 @@ def summarize_news():
             json={
                 'model': OPENAI_MODEL,
                 'messages': [
-                    {'role': 'system', 'content': 'You summarize news articles effectively in Nepali with good context.'},
+                    {'role': 'system', 'content': 'You summarize news articles effectively in Nepali with good context and detail.'},
                     {'role': 'user', 'content': prompt}
                 ],
                 'temperature': 0.35,
-                'max_tokens': 220,
+                'max_tokens': 400,
                 'top_p': 1,
             },
             timeout=25
@@ -161,12 +199,15 @@ def summarize_news():
         if not summary:
             raise ValueError('Empty summary from LLM')
 
-        return jsonify({"status": "success", "summary": summary.strip()})
+        summary = summary.strip()
+        # Persist the AI summary so subsequent requests are instant
+        set_cached_summary(cache_key, summary)
+        return jsonify({"status": "success", "summary": summary, "cached": False})
     except Exception as e:
         logger.exception('LLM summary request failed')
         fallback = (title + ' ' + description).strip()
-        fallback = fallback[:320] + ('...' if len(fallback) > 320 else '')
-        return jsonify({"status": "success", "summary": fallback})
+        fallback = fallback[:500] + ('...' if len(fallback) > 500 else '')
+        return jsonify({"status": "success", "summary": fallback, "cached": False})
 
 @app.route('/api/tts', methods=['POST'])
 def generate_tts():

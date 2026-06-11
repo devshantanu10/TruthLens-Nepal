@@ -41,8 +41,8 @@ async function fetchScrape(url) {
 let selectedTtsVoice = null;
 const ttsState = {
     voice: null,
-    rate: 0.88,   // slightly slower for a news-reporter cadence
-    pitch: 1.05,  // slightly warmer pitch
+    rate: 1,
+    pitch: 1,
 };
 let speechUtterance = null;
 let ttsAudio = null;
@@ -55,30 +55,8 @@ function isSpeechSupported() {
     return 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
 }
 
-/**
- * Pick the best reporter-style voice.
- * Priority: Nepali > Hindi female > Hindi > English female > any English
- */
-function getBestReporterVoice(voices) {
-    // 1. Nepali voice
-    const nepali = voices.find(v => /ne-NP|Nepali/i.test(`${v.name} ${v.lang}`));
-    if (nepali) return nepali;
-    // 2. Hindi female
-    const hindiFemale = voices.find(v =>
-        /hi-IN|Hindi/i.test(`${v.name} ${v.lang}`) && /female|woman|girl|lekha|kalpana|hemant/i.test(v.name));
-    if (hindiFemale) return hindiFemale;
-    // 3. Any Hindi
-    const hindi = voices.find(v => /hi-IN|Hindi/i.test(`${v.name} ${v.lang}`));
-    if (hindi) return hindi;
-    // 4. English female (Samantha, Zira, Google UK Female, etc.)
-    const engFemale = voices.find(v =>
-        /en-/i.test(v.lang) && /female|woman|samantha|zira|microsoft zira|google uk english female|fiona|karen/i.test(v.name));
-    if (engFemale) return engFemale;
-    // 5. Google English
-    const googleEn = voices.find(v => /en-/i.test(v.lang) && /google/i.test(v.name));
-    if (googleEn) return googleEn;
-    // 6. Fallback
-    return voices.find(v => /en-/i.test(v.lang)) || voices[0] || null;
+function getDefaultEnglishVoice(voices) {
+    return voices.find(v => /en-|English/i.test(`${v.name} ${v.lang}`)) || voices[0] || null;
 }
 
 function loadSpeechVoices() {
@@ -94,7 +72,7 @@ function loadSpeechVoices() {
         return;
     }
     voiceLoadAttempts = 0;
-    ttsState.voice = ttsState.voice || getBestReporterVoice(availableSpeechVoices);
+    ttsState.voice = ttsState.voice || getDefaultEnglishVoice(availableSpeechVoices);
     populateVoiceDropdown();
 }
 
@@ -202,31 +180,28 @@ function playNativeSpeech(text) {
         loadSpeechVoices();
     }
 
-    // Add a short Nepali broadcast intro before the summary
-    const broadcastText = 'नमस्ते। यो TruthLens Nepal को समाचार सारांश हो। ' + normalized;
-
-    speechUtterance = new SpeechSynthesisUtterance(broadcastText);
-    speechUtterance.voice = ttsState.voice || getBestReporterVoice(availableSpeechVoices) || null;
+    speechUtterance = new SpeechSynthesisUtterance(normalized);
+    speechUtterance.voice = ttsState.voice || getDefaultEnglishVoice(availableSpeechVoices) || null;
     speechUtterance.volume = 1;
     speechUtterance.rate = ttsState.rate;
     speechUtterance.pitch = ttsState.pitch;
-    speechUtterance.lang = speechUtterance.voice?.lang || 'hi-IN';
-    speechUtterance.onstart = () => updateTtsStatus('🎙️ समाचार वाचन सुरु भयो...');
+    speechUtterance.lang = speechUtterance.voice?.lang || 'en-US';
+    speechUtterance.onstart = () => updateTtsStatus('Playing via browser speech synthesis...');
     speechUtterance.onend = () => {
         updateTtsButtons();
-        updateTtsStatus('✅ समाचार वाचन सम्पन्न।');
+        updateTtsStatus('Finished speaking.');
     };
-    speechUtterance.onpause = () => updateTtsStatus('⏸️ वाचन रोकिएको छ।');
-    speechUtterance.onresume = () => updateTtsStatus('▶️ वाचन जारी छ...');
+    speechUtterance.onpause = () => updateTtsStatus('Speech paused.');
+    speechUtterance.onresume = () => updateTtsStatus('Speech resumed.');
     speechUtterance.onerror = (err) => {
         console.error('Speech synthesis error', err);
-        updateTtsStatus('❌ आवाज प्रसारण असफल।');
+        updateTtsStatus('Browser speech failed.');
         updateTtsButtons();
     };
 
     window.speechSynthesis.speak(speechUtterance);
     updateTtsButtons();
-    updateTtsStatus('🎙️ TruthLens Nepal समाचार वाचन प्रारम्भ...');
+    updateTtsStatus('Queued browser speech synthesis...');
     return true;
 }
 
@@ -372,25 +347,25 @@ function bindTtsControlEvents() {
 function getTtsControlsHtml() {
     return `
         <div class="tts-controls">
-            <div class="tts-model-note">🎙️ TruthLens Nepal — AI समाचार वाचन</div>
+            <div class="tts-model-note">Voice source: browser speech synthesis first, backend TTS if browser voice is unavailable.</div>
             <div id="tts-status" class="tts-status"></div>
             <div class="tts-control-row">
-                <label for="tts-voice-select">आवाज छनोट</label>
+                <label for="tts-voice-select">Browser voice (fallback)</label>
                 <select id="tts-voice-select"></select>
             </div>
             <div class="tts-control-row">
-                <label for="tts-rate">गति <span id="tts-rate-value">${ttsState.rate.toFixed(1)}x</span></label>
-                <input id="tts-rate" type="range" min="0.5" max="1.8" step="0.05" value="${ttsState.rate}">
+                <label for="tts-rate">Speed <span id="tts-rate-value">${ttsState.rate.toFixed(1)}x</span></label>
+                <input id="tts-rate" type="range" min="0.5" max="2" step="0.1" value="${ttsState.rate}">
             </div>
             <div class="tts-control-row">
-                <label for="tts-pitch">स्वर <span id="tts-pitch-value">${ttsState.pitch.toFixed(1)}</span></label>
-                <input id="tts-pitch" type="range" min="0.5" max="1.8" step="0.05" value="${ttsState.pitch}">
+                <label for="tts-pitch">Pitch <span id="tts-pitch-value">${ttsState.pitch.toFixed(1)}</span></label>
+                <input id="tts-pitch" type="range" min="0" max="2" step="0.1" value="${ttsState.pitch}">
             </div>
             <div class="tts-controls-row">
-                <button id="tts-play" class="tts-btn" type="button"><i class="fas fa-volume-up"></i> सुन्नुहोस्</button>
-                <button id="tts-pause" class="tts-btn" type="button" disabled><i class="fas fa-pause"></i> रोक्नुहोस्</button>
-                <button id="tts-resume" class="tts-btn" type="button" disabled><i class="fas fa-play"></i> जारी</button>
-                <button id="tts-stop" class="tts-btn" type="button" disabled><i class="fas fa-stop"></i> बन्द</button>
+                <button id="tts-play" class="tts-btn" type="button">Play</button>
+                <button id="tts-pause" class="tts-btn" type="button" disabled>Pause</button>
+                <button id="tts-resume" class="tts-btn" type="button" disabled>Resume</button>
+                <button id="tts-stop" class="tts-btn" type="button" disabled>Stop</button>
             </div>
         </div>
     `;
@@ -713,12 +688,11 @@ function renderNewsFeed(isManualRefresh = false) {
             const isSuspect = news.category === 'संदिग्ध' || news.category === 'misinformation';
             card.className = 'news-card animate-fade-in' + (isSuspect ? ' card-suspect' : '');
             const catColor = getCategoryColor(news.category);
-            const newsUrl = news.link && news.link !== '#' ? news.link : null;
             card.innerHTML = `
                 <div class="news-card-top">
                     <span class="cat-badge" style="background:${catColor.bg};color:${catColor.color};">${news.category || 'General'}</span>
                 </div>
-                <h3><a href="${newsUrl ? escapeHtml(newsUrl) : '#'}" class="news-title-link" ${newsUrl ? 'target="_self"' : ''}>${escapeHtml(news.title)}</a></h3>
+                <h3><a href="#" class="news-title-link">${escapeHtml(news.title)}</a></h3>
                 <p>${news.description ? news.description.substring(0, 150) + '...' : ''}</p>
                 <div class="card-actions">
                     <button class="verify-btn" onclick="verifyNews(${index}, this)">
@@ -733,12 +707,7 @@ function renderNewsFeed(isManualRefresh = false) {
             `;
             newsContainer.appendChild(card);
             const headlineLink = card.querySelector('.news-title-link');
-            if (headlineLink && newsUrl) {
-                headlineLink.addEventListener('click', event => {
-                    event.preventDefault();
-                    window.location.href = newsUrl;
-                });
-            } else if (headlineLink) {
+            if (headlineLink) {
                 headlineLink.addEventListener('click', event => {
                     event.preventDefault();
                     openSummaryModal(index);
@@ -1062,58 +1031,16 @@ function escapeHtml(text) {
         .replace(/'/g, '&#039;');
 }
 
-/**
- * Produce a rich, multi-paragraph AI-style summary for the news reporter TTS.
- * Falls back gracefully when the text is short.
- */
-function summarizeText(text, sentenceCount = 10) {
+function summarizeText(text, sentenceCount = 5) {
     const normalized = (text || '').replace(/\s+/g, ' ').trim();
-    if (!normalized) return 'यस समाचारको बारेमा पर्याप्त जानकारी उपलब्ध छैन।';
-
-    // Try to extract sentences
-    const sentences = normalized.match(/[^।.!?]+[।.!?]+/g) || [];
-
-    // If we have enough sentences, pick up to sentenceCount
-    if (sentences.length >= 3) {
-        const picked = sentences.slice(0, sentenceCount).join(' ').trim();
-        // Build a news-bulletin style paragraph
-        return buildReporterSummary(normalized, picked);
+    if (!normalized) return 'सारांश उपलब्ध छैन।';
+    const sentences = normalized.match(/[^।.!?]+[।.!?]+/g) || [normalized];
+    const selected = sentences.slice(0, sentenceCount).join(' ').trim();
+    if (selected.length > 0) {
+        return selected.length > 500 ? selected.slice(0, 500) + '...' : selected;
     }
-
-    // Short text — expand with word-based fallback
     const words = normalized.split(' ');
-    const base = words.slice(0, 120).join(' ') + (words.length > 120 ? '।' : '');
-    return buildReporterSummary(normalized, base);
-}
-
-/**
- * Wrap extracted content in a broadcaster-style Nepali paragraph.
- */
-function buildReporterSummary(originalText, extracted) {
-    // Detect source language (rough heuristic: presence of Devanagari)
-    const hasDevanagari = /[\u0900-\u097F]/.test(originalText);
-    const isNepali = hasDevanagari;
-
-    if (isNepali) {
-        return (
-            'TruthLens Nepal AI विश्लेषण प्रणालीले यस समाचारको गहन अध्ययन गरेको छ। ' +
-            extracted +
-            ' यो समाचार विभिन्न विश्वसनीय स्रोतहरूसँग तुलना गरी हाम्रो AI प्रणालीले विश्लेषण गरेको हो। ' +
-            'पाठकहरूलाई सुझाव छ कि कुनै पनि समाचारलाई सेयर गर्नु अघि मूल स्रोत जाँच्नुहोस् र ' +
-            'थप जानकारीको लागि सम्बन्धित अधिकृत निकायको आधिकारिक सूचना हेर्नुहोस्। ' +
-            'TruthLens Nepal — सत्य, पारदर्शी र विश्वसनीय।'
-        );
-    }
-
-    // English fallback
-    return (
-        'TruthLens Nepal AI has analyzed this news article in detail. ' +
-        extracted +
-        ' This summary has been generated by cross-referencing multiple credible Nepali news sources ' +
-        'and applying our trained machine-learning model. ' +
-        'Readers are advised to verify information from original sources before sharing. ' +
-        'TruthLens Nepal — Accurate. Transparent. Trustworthy.'
-    );
+    return words.slice(0, 70).join(' ') + (words.length > 70 ? '...' : '');
 }
 
 window.summarizeNews = async function(index, btnEl) {
@@ -1152,7 +1079,7 @@ window.summarizeNews = async function(index, btnEl) {
                     <i class="fas fa-volume-up"></i> सुन्नुहोस्
                 </button>
             </div>
-            <p style="white-space:pre-wrap;line-height:1.8;">${escapeHtml(summaryText)}</p>
+            <p>${escapeHtml(summaryText)}</p>
         </div>
     `;
     
@@ -1466,7 +1393,7 @@ window.summarizeFbPost = async function(index, btnEl) {
                     <i class="fas fa-volume-up"></i> सुन्नुहोस्
                 </button>
             </div>
-            <p style="white-space:pre-wrap;line-height:1.8;">${escapeHtml(summaryText)}</p>
+            <p>${escapeHtml(summaryText)}</p>
         </div>
     `;
     
