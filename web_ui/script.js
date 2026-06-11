@@ -713,11 +713,12 @@ function renderNewsFeed(isManualRefresh = false) {
             const isSuspect = news.category === 'संदिग्ध' || news.category === 'misinformation';
             card.className = 'news-card animate-fade-in' + (isSuspect ? ' card-suspect' : '');
             const catColor = getCategoryColor(news.category);
+            const newsUrl = news.link && news.link !== '#' ? news.link : null;
             card.innerHTML = `
                 <div class="news-card-top">
                     <span class="cat-badge" style="background:${catColor.bg};color:${catColor.color};">${news.category || 'General'}</span>
                 </div>
-                <h3><a href="#" class="news-title-link">${escapeHtml(news.title)}</a></h3>
+                <h3><a href="${newsUrl ? escapeHtml(newsUrl) : '#'}" class="news-title-link" ${newsUrl ? 'target="_self"' : ''}>${escapeHtml(news.title)}</a></h3>
                 <p>${news.description ? news.description.substring(0, 150) + '...' : ''}</p>
                 <div class="card-actions">
                     <button class="verify-btn" onclick="verifyNews(${index}, this)">
@@ -732,7 +733,12 @@ function renderNewsFeed(isManualRefresh = false) {
             `;
             newsContainer.appendChild(card);
             const headlineLink = card.querySelector('.news-title-link');
-            if (headlineLink) {
+            if (headlineLink && newsUrl) {
+                headlineLink.addEventListener('click', event => {
+                    event.preventDefault();
+                    window.location.href = newsUrl;
+                });
+            } else if (headlineLink) {
                 headlineLink.addEventListener('click', event => {
                     event.preventDefault();
                     openSummaryModal(index);
