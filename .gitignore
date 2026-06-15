@@ -8,4 +8,5 @@ outputs/*.joblib
 outputs/*.json
 !outputs/metrics.json
 desktop.ini
-
+.vscode/
+data/*.db
