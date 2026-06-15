@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TruthLens Nepal | समाचार जाँच केन्द्र</title>
     <meta name="description" content="TruthLens Nepal — नेपाली समाचारको सत्यता जाँच्न AI उपकरण।">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=3">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Hind:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -24,7 +24,7 @@
                 <span id="display-portal-top">नागरिक</span>
             </div>
         </div>
-        <div id="backend-status" class="backend-status offline">पृष्ठ भरिएको छैन: Flask backend चलाउने `python api.py` र पृष्ठ रिफ्रेश गर्नुहोस्।</div>
+        <div id="backend-status" class="backend-status offline" style="display: none;">पृष्ठ भरिएको छैन: Flask backend चलाउने `python api.py` र पृष्ठ रिफ्रेश गर्नुहोस्।</div>
     </div>
 
     <!-- Main Header -->
@@ -390,7 +390,7 @@
     </div>
 </div>
 
-<script src="script.js"></script>
+<script src="script.js?v=4"></script>
 <script>
     // Initialize public state elements
     const ut = document.getElementById('display-user-top');
