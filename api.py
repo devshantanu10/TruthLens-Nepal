@@ -289,11 +289,12 @@ def generate_tts():
         except Exception as e:
             logger.warning('OpenAI audio generation failed: %s', e)
 
-    # Fallback to gTTS (Female Nepali Voice)
+    # Fallback to gTTS (Nepali voice)
     try:
-        # Truncate text to avoid Google Translate rate limits on massive AI summaries
-        safe_text = text[:600] + ("..." if len(text) > 600 else "")
-        tts = gTTS(text=safe_text, lang='ne')
+        # Cap text to avoid Google Translate API limits.
+        # gTTS splits at sentence boundaries internally so 1800 chars is safe.
+        safe_text = text[:1800]
+        tts = gTTS(text=safe_text, lang='ne', slow=False)
         mp3_bytes = io.BytesIO()
         tts.write_to_fp(mp3_bytes)
         mp3_bytes.seek(0)

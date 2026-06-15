@@ -56,10 +56,13 @@ function isSpeechSupported() {
     return 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
 }
 
-function getDefaultEnglishVoice(voices) {
-    return voices.find(v => /ne-|Nepali/i.test(`${v.name} ${v.lang}`)) || 
-           voices.find(v => /hi-|Hindi/i.test(`${v.name} ${v.lang}`)) || 
-           voices.find(v => /en-|English/i.test(`${v.name} ${v.lang}`)) || 
+// Prefer Nepali → Hindi → any available voice for Devanagari text
+function getBestVoiceForNepali(voices) {
+    return voices.find(v => /ne-NP|ne_NP/i.test(v.lang)) ||
+           voices.find(v => /^ne/i.test(v.lang)) ||
+           voices.find(v => /nepali/i.test(v.name)) ||
+           voices.find(v => /^hi/i.test(v.lang)) ||
+           voices.find(v => /hindi/i.test(v.name)) ||
            voices[0] || null;
 }
 
@@ -76,7 +79,7 @@ function loadSpeechVoices() {
         return;
     }
     voiceLoadAttempts = 0;
-    ttsState.voice = ttsState.voice || getDefaultEnglishVoice(availableSpeechVoices);
+    ttsState.voice = ttsState.voice || getBestVoiceForNepali(availableSpeechVoices);
     populateVoiceDropdown();
 }
 
@@ -180,32 +183,42 @@ function playNativeSpeech(text) {
     if (!normalized) return false;
     if (!isSpeechSupported()) return false;
 
+    // Cancel any queued utterances first (Chrome bug: stale queue blocks new speech)
+    window.speechSynthesis.cancel();
+
     if (!availableSpeechVoices.length) {
         loadSpeechVoices();
     }
 
+    // Pick best voice for Nepali Devanagari text
+    const bestVoice = ttsState.voice || getBestVoiceForNepali(availableSpeechVoices) || null;
+
     speechUtterance = new SpeechSynthesisUtterance(normalized);
-    speechUtterance.voice = ttsState.voice || getDefaultEnglishVoice(availableSpeechVoices) || null;
+    speechUtterance.voice = bestVoice;
     speechUtterance.volume = 1;
     speechUtterance.rate = ttsState.rate;
     speechUtterance.pitch = ttsState.pitch;
-    speechUtterance.lang = speechUtterance.voice?.lang || 'en-US';
-    speechUtterance.onstart = () => updateTtsStatus('Playing via browser speech synthesis...');
+    // Always set lang to ne-NP so the engine pronounces Devanagari correctly
+    // If no Nepali voice exists, ne-NP still signals correct phoneme tables
+    speechUtterance.lang = bestVoice?.lang || 'ne-NP';
+
+    speechUtterance.onstart = () => updateTtsStatus('🔊 आवाज चालु छ...');
     speechUtterance.onend = () => {
         updateTtsButtons();
-        updateTtsStatus('Finished speaking.');
+        updateTtsStatus('✅ आवाज समाप्त भयो।');
     };
-    speechUtterance.onpause = () => updateTtsStatus('Speech paused.');
-    speechUtterance.onresume = () => updateTtsStatus('Speech resumed.');
+    speechUtterance.onpause = () => updateTtsStatus('⏸ आवाज रोकिएको।');
+    speechUtterance.onresume = () => updateTtsStatus('▶ आवाज जारी छ...');
     speechUtterance.onerror = (err) => {
         console.error('Speech synthesis error', err);
-        updateTtsStatus('Browser speech failed.');
+        updateTtsStatus('❌ ब्राउजर आवाज असफल भयो।');
         updateTtsButtons();
     };
 
-    window.speechSynthesis.speak(speechUtterance);
+    // Chrome workaround: delay speak by one tick to avoid silent failure
+    setTimeout(() => window.speechSynthesis.speak(speechUtterance), 50);
     updateTtsButtons();
-    updateTtsStatus('Queued browser speech synthesis...');
+    updateTtsStatus('🔄 आवाज तयार गर्दै...');
     return true;
 }
 
@@ -216,6 +229,14 @@ function stripHtml(text) {
         .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#039;/g, "'")
         .replace(/\s{2,}/g, ' ')    // collapse multiple spaces
         .trim();
+}
+
+// Returns true only when the backend has confirmed it is reachable
+function isBackendOnline() {
+    const statusEl = document.getElementById('backend-status');
+    // The element gets class 'online' added by checkBackendStatus() on success.
+    // It may be display:none but still class='offline' when backend is unreachable.
+    return statusEl ? statusEl.classList.contains('online') : false;
 }
 
 async function speakSummary(text) {
@@ -229,66 +250,52 @@ async function speakSummary(text) {
     currentSpeechText = normalized;
     currentSpeechRequestId++;
     const reqId = currentSpeechRequestId;
-    
+
     cancelSpeech();
 
-    const statusEl = document.getElementById('backend-status');
-    const isOffline = statusEl && statusEl.classList.contains('offline');
+    if (isBackendOnline()) {
+        // ── Path A: Backend online → use gTTS Nepali mp3 (best quality) ──
+        try {
+            updateTtsStatus('🔄 Nepali आवाज तयार गर्दै...');
+            const blob = await fetchTtsAudio(normalized);
+            if (reqId !== currentSpeechRequestId) return; // superseded
 
-    if (isOffline) {
-        // Backend is offline: use native browser speech instantly
-        if (isSpeechSupported()) {
-            const browserSpeechStarted = playNativeSpeech(normalized);
-            if (browserSpeechStarted) {
-                updateTtsStatus('ब्राउजर आवाज चालु छ...');
-                return;
-            }
+            releaseAudioUrl();
+            ttsAudioUrl = URL.createObjectURL(blob);
+            ttsAudio = new Audio(ttsAudioUrl);
+            ttsAudio.volume = 1;
+            ttsAudio.muted = false;
+            ttsAudio.preload = 'auto';
+            ttsAudio.onended  = () => { updateTtsButtons(); updateTtsStatus('✅ आवाज समाप्त।'); };
+            ttsAudio.onpause  = () => updateTtsStatus('⏸ आवाज रोकिएको।');
+            ttsAudio.onplay   = () => updateTtsStatus('🔊 Nepali आवाज चालु छ...');
+            ttsAudio.onerror  = (e) => {
+                console.error('Audio playback error', e);
+                updateTtsStatus('❌ अडियो असफल — ब्राउजर आवाज प्रयास गर्दै...');
+                updateTtsButtons();
+                // Fallback to browser TTS if audio element fails
+                playNativeSpeech(normalized);
+            };
+            await ttsAudio.play();
+            updateTtsButtons();
+            return;
+        } catch (err) {
+            console.warn('Backend TTS failed, falling back to browser speech:', err.message);
+            updateTtsStatus('⚠️ Backend TTS असफल — ब्राउजर आवाज प्रयास गर्दै...');
         }
-        updateTtsStatus('आवाज चलाउन असफल।');
-        alert('Voice play failed. कृपया ब्राउजरको आवाज सक्षम छ कि छैन जाँच्नुहोस्।');
-        updateTtsButtons();
-        return;
+    } else {
+        updateTtsStatus('⚠️ Backend अनलाइन छैन — ब्राउजर आवाज प्रयोग गर्दै...');
     }
 
-    // Backend is online: use high-quality backend TTS
-    try {
-        updateTtsStatus('Backend TTS प्रयास गर्दै...');
-        const blob = await fetchTtsAudio(normalized);
-        if (reqId !== currentSpeechRequestId) return;
-        
-        releaseAudioUrl();
-        ttsAudioUrl = URL.createObjectURL(blob);
-        ttsAudio = new Audio(ttsAudioUrl);
-        ttsAudio.volume = 1;
-        ttsAudio.muted = false;
-        ttsAudio.preload = 'auto';
-        ttsAudio.crossOrigin = 'anonymous';
-        ttsAudio.onended = () => {
-            updateTtsButtons();
-            updateTtsStatus('Backend अडियो समाप्त।');
-        };
-        ttsAudio.onpause = () => updateTtsStatus('Backend अडियो रोकिएको।');
-        ttsAudio.onplay = () => updateTtsStatus('Backend अडियो चालु छ...');
-        ttsAudio.onerror = (err) => {
-            console.error('Audio playback error', err);
-            updateTtsStatus('Backend अडियो असफल।');
-            updateTtsButtons();
-        };
-        await ttsAudio.play();
-        updateTtsButtons();
-    } catch (err) {
-        console.warn('Backend TTS failed, falling back to native browser speech:', err);
-        updateTtsStatus('Backend TTS असफल, ब्राउजर आवाज प्रयास गर्दै...');
-        if (isSpeechSupported()) {
-            const browserSpeechStarted = playNativeSpeech(normalized);
-            if (browserSpeechStarted) {
-                return;
-            }
-        }
-        updateTtsStatus('आवाज चलाउन असफल।');
-        alert('Voice play failed. सर्भर र ब्राउजर दुवैमा समस्या छ।');
-        updateTtsButtons();
+    // ── Path B: Browser speech synthesis (fallback) ──
+    if (isSpeechSupported()) {
+        const started = playNativeSpeech(normalized);
+        if (started) return;
     }
+
+    updateTtsStatus('❌ आवाज चलाउन असफल।');
+    alert('आवाज सुविधा उपलब्ध भएन।\nकृपया Flask backend चलाउनुहोस्: python api.py');
+    updateTtsButtons();
 }
 
 
@@ -385,25 +392,25 @@ function bindTtsControlEvents() {
 function getTtsControlsHtml() {
     return `
         <div class="tts-controls">
-            <div class="tts-model-note">Voice source: browser speech synthesis first, backend TTS if browser voice is unavailable.</div>
+            <div class="tts-model-note">🎙️ आवाज स्रोत: Backend चलेको छ भने Nepali gTTS आवाज — अन्यथा ब्राउजर आवाज।</div>
             <div id="tts-status" class="tts-status"></div>
             <div class="tts-control-row">
-                <label for="tts-voice-select">Browser voice (fallback)</label>
+                <label for="tts-voice-select">ब्राउजर आवाज (fallback)</label>
                 <select id="tts-voice-select"></select>
             </div>
             <div class="tts-control-row">
-                <label for="tts-rate">Speed <span id="tts-rate-value">${ttsState.rate.toFixed(1)}x</span></label>
+                <label for="tts-rate">गति <span id="tts-rate-value">${ttsState.rate.toFixed(1)}x</span></label>
                 <input id="tts-rate" type="range" min="0.5" max="2" step="0.1" value="${ttsState.rate}">
             </div>
             <div class="tts-control-row">
-                <label for="tts-pitch">Pitch <span id="tts-pitch-value">${ttsState.pitch.toFixed(1)}</span></label>
+                <label for="tts-pitch">पिच <span id="tts-pitch-value">${ttsState.pitch.toFixed(1)}</span></label>
                 <input id="tts-pitch" type="range" min="0" max="2" step="0.1" value="${ttsState.pitch}">
             </div>
             <div class="tts-controls-row">
-                <button id="tts-play" class="tts-btn" type="button">Play</button>
-                <button id="tts-pause" class="tts-btn" type="button" disabled>Pause</button>
-                <button id="tts-resume" class="tts-btn" type="button" disabled>Resume</button>
-                <button id="tts-stop" class="tts-btn" type="button" disabled>Stop</button>
+                <button id="tts-play" class="tts-btn" type="button">▶ बजाउनुहोस्</button>
+                <button id="tts-pause" class="tts-btn" type="button" disabled>⏸ रोक्नुहोस्</button>
+                <button id="tts-resume" class="tts-btn" type="button" disabled>▶ जारी</button>
+                <button id="tts-stop" class="tts-btn" type="button" disabled>⏹ बन्द</button>
             </div>
         </div>
     `;
