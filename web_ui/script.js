@@ -209,8 +209,18 @@ function playNativeSpeech(text) {
     return true;
 }
 
+// ── Strip HTML tags so TTS never reads raw markup ──
+function stripHtml(text) {
+    return String(text || '')
+        .replace(/<[^>]+>/g, ' ')   // remove all HTML tags
+        .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#039;/g, "'")
+        .replace(/\s{2,}/g, ' ')    // collapse multiple spaces
+        .trim();
+}
+
 async function speakSummary(text) {
-    const normalized = String(text || '').trim();
+    // Always strip HTML before speaking — summaryText may contain <strong> etc.
+    const normalized = stripHtml(text);
     if (!normalized) {
         alert('सुनाउनको लागि कुनै सारांश उपलब्ध भएन।');
         return;
@@ -994,21 +1004,33 @@ window.openSummaryModal = async function(index) {
     const [summaryResult, scrapeResult] = await Promise.allSettled([summaryPromise, scrapePromise]);
 
     let summaryText = '';
+    let modalAiFailed = false;
     if (summaryResult.status === 'fulfilled') {
         try {
-            const data = await summaryResult.value.json();
-            summaryText = data.summary || '';
-        } catch {
-            summaryText = '';
+            const resp = summaryResult.value;
+            if (resp.ok) {
+                const data = await resp.json();
+                summaryText = (data && data.summary) || '';
+            }
+        } catch (e) {
+            console.warn('Modal summary JSON parse failed:', e);
         }
     }
     if (!summaryText) {
+        modalAiFailed = true;
+        // summarizeText returns plain text — safe for escapeHtml and TTS
         summaryText = summarizeText(news.title + '. ' + description, 10);
     }
+    // Set speech text from plain-text summary (stripHtml applied inside speakSummary)
     currentSpeechText = summaryText;
+
+    const modalAiNote = modalAiFailed
+        ? `<div style="font-size:.75rem;color:#b45309;margin:4px 0 8px;">⚠️ AI सारांश अनुपलब्ध — स्वचालित विश्लेषण प्रयोग गरियो</div>`
+        : `<div style="font-size:.75rem;color:#16a34a;margin:4px 0 8px;">🤖 AI द्वारा उत्पन्न सारांश</div>`;
 
     articleModalSummary.innerHTML = `
         <div class="article-summary-title">AI Summary</div>
+        ${modalAiNote}
         <div class="article-summary-text">${escapeHtml(summaryText)}</div>
         ${getTtsControlsHtml()}
     `;
@@ -1079,14 +1101,14 @@ function summarizeText(text, sentenceCount = 15) {
         summary = words.slice(0, 300).join(' ') + (words.length > 300 ? '...' : '');
     }
     
-    // Add analytical context to make the summary longer and more informative
+    // Add analytical context — use plain text only (no HTML tags) so this
+    // string is safe for both innerHTML (via escapeHtml) and TTS speech
     const contextLines = [];
     
-    // Standard deep analysis paragraphs to guarantee perfect length
-    contextLines.push('\n\n<strong>🔍 विस्तृत विश्लेषण:</strong>');
+    contextLines.push('\n\n🔍 विस्तृत विश्लेषण:');
     contextLines.push('यस घटनाले वर्तमान परिप्रेक्ष्यमा गहिरो प्रभाव पार्ने देखिन्छ। सम्बन्धित निकाय र सरोकारवालाहरूले यस विषयलाई निकै गम्भीरताका साथ लिएका छन्। प्रारम्भिक अनुसन्धान र तथ्यहरूको आधारमा, यो केवल एक सामान्य घटना मात्र नभएर बृहत् नीतिगत र संरचनात्मक परिवर्तनको संकेत हुन सक्ने विज्ञहरूको भनाइ छ।');
     
-    // Topic-based deep context
+    // Topic-based deep context (plain text — no HTML)
     if (/सरकार|मन्त्री|प्रधानमन्त्री|संसद|नीति|बजेट|राजनीति/i.test(normalized)) {
         contextLines.push('राजनीतिक विश्लेषकहरूका अनुसार, यस प्रकारका निर्णयहरूले राज्यको शक्ति सन्तुलन र आगामी निर्वाचन रणनीतिहरूमा प्रत्यक्ष असर पार्दछन्। सरकारको नीति तथा कार्यक्रममा यसले पार्ने दीर्घकालीन प्रभावको मूल्याङ्कन गर्न आवश्यक छ। विपक्षी दलहरू र नागरिक समाजले पनि यस कदमलाई नजिकबाट नियालिरहेका छन् र यसको पारदर्शिता तथा जवाफदेहितामाथि प्रश्न उठाउन सक्ने सम्भावना छ।');
     } else if (/अर्थ|आर्थिक|बैंक|ऋण|GDP|प्रतिशत|वृद्धि|बजार|शेयर|व्यापार/i.test(normalized)) {
@@ -1099,8 +1121,8 @@ function summarizeText(text, sentenceCount = 15) {
         contextLines.push('यस प्रकारका घटनाक्रमहरूले समाजको विभिन्न तह र तप्कामा छुट्टाछुट्टै प्रभाव पार्ने गर्दछन्। सामाजिक सञ्जाल र मूलधारका मिडियाहरूमा यस विषयले व्यापक चर्चा पाइरहेको छ, जसले जनमत निर्माणमा महत्वपूर्ण भूमिका खेलिरहेको छ। आगामी दिनहरूमा सम्बन्धित पक्षहरूले चाल्ने कदमहरूले नै यसको अन्तिम परिणाम निर्धारण गर्नेछ।');
     }
     
-    // Add impact note
-    contextLines.push('\n<strong>📊 निष्कर्ष र आगामी बाटो:</strong>\nयस समाचारको विस्तृत विश्लेषण र अतिरिक्त तथ्यहरूका लागि मूल स्रोतमा गई पढ्न सिफारिस गरिन्छ। वर्तमान परिस्थिति द्रुत रूपमा परिवर्तन भइरहेको हुनाले नयाँ जानकारीहरू निरन्तर आउन सक्छन्। TruthLens Nepal ले यस समाचारको सत्यता जाँच गरी पाठकहरूलाई तथ्यपरक र भरपर्दो सूचना प्रदान गर्न प्रतिबद्ध छ। गलत वा भ्रामक जानकारीबाट बच्न आधिकारिक स्रोतहरूको मात्र विश्वास गर्नुहोला।');
+    // Plain-text conclusion (no HTML)
+    contextLines.push('\n📊 निष्कर्ष र आगामी बाटो: यस समाचारको विस्तृत विश्लेषण र अतिरिक्त तथ्यहरूका लागि मूल स्रोतमा गई पढ्न सिफारिस गरिन्छ। TruthLens Nepal ले यस समाचारको सत्यता जाँच गरी पाठकहरूलाई तथ्यपरक र भरपर्दो सूचना प्रदान गर्न प्रतिबद्ध छ।');
     
     return summary + '\n' + contextLines.join(' ');
 }
@@ -1131,25 +1153,39 @@ window.summarizeNews = async function(index, btnEl) {
     }
 
     // 2. Fetch the AI Summary using the full text for much better context
+    let aiSummaryFailed = false;
     try {
         const resp = await fetch(`${API_BASE}/summary`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 title: news.title,
-                description: fullArticleText.substring(0, 4000), // pass up to 4000 chars for context
+                description: fullArticleText.substring(0, 4000),
                 source: news.source,
                 url: news.link
             })
         });
+        if (!resp.ok) throw new Error(`API error ${resp.status}`);
         const data = await resp.json();
-        summaryText = data.summary || summarizeText(news.title + '.\n\n' + fullArticleText);
+        if (data.summary) {
+            summaryText = data.summary;
+        } else {
+            // API responded but had no summary (e.g., missing API key)
+            aiSummaryFailed = true;
+            summaryText = summarizeText(news.title + '.\n\n' + fullArticleText);
+        }
     } catch (e) {
-        console.error("AI Summary failed, using fallback:", e);
+        console.warn('AI Summary failed, using client-side fallback:', e.message);
+        aiSummaryFailed = true;
         summaryText = summarizeText(news.title + '.\n\n' + fullArticleText);
     }
 
-    // 3. Display the Summary (without showing the full article in the UI)
+    // summaryText is always plain text — safe for both escapeHtml display and TTS
+    const aiNote = aiSummaryFailed
+        ? `<div style="font-size:.75rem;color:#b45309;margin-top:6px;">⚠️ AI सारांश उपलब्ध भएन — स्वचालित विश्लेषण प्रयोग गरियो</div>`
+        : `<div style="font-size:.75rem;color:#16a34a;margin-top:6px;">🤖 AI द्वारा उत्पन्न सारांश</div>`;
+
+    // 3. Display the Summary
     summaryContainer.innerHTML = `
         <div class="summary-card">
             <div class="summary-card-row">
@@ -1159,10 +1195,12 @@ window.summarizeNews = async function(index, btnEl) {
                 </button>
             </div>
             <p>${escapeHtml(summaryText)}</p>
+            ${aiNote}
         </div>
     `;
-    
+
     document.getElementById(`tts-btn-${index}`).addEventListener('click', () => {
+        // summaryText is plain text — stripHtml() in speakSummary handles any edge cases
         speakSummary(summaryText);
     });
 
