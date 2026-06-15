@@ -31,6 +31,11 @@ from src.cache import (
 app = Flask(__name__, static_folder='web_ui', static_url_path='')
 CORS(app)
 
+@app.after_request
+def add_private_network_headers(response):
+    response.headers['Access-Control-Allow-Private-Network'] = 'true'
+    return response
+
 # Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

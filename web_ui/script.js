@@ -294,10 +294,51 @@ async function speakSummary(text) {
             updateTtsStatus('⚠️ Backend TTS असफल — ब्राउजर आवाज प्रयास गर्दै...');
         }
     } else {
-        updateTtsStatus('⚠️ Backend अनलाइन छैन — ब्राउजर आवाज प्रयोग गर्दै...');
+        updateTtsStatus('⚠️ Backend अनलाइन छैन — बैकअप आवाज प्रयोग गर्दै...');
     }
 
-    // ── Path B: Browser speech synthesis (fallback) ──
+    // ── Path B: Unofficial Google TTS API (Frontend fallback) ──
+    try {
+        const chunks = [];
+        const words = normalized.split(' ');
+        let current = '';
+        for (const w of words) {
+            if (current.length + w.length > 180) {
+                chunks.push(current);
+                current = w + ' ';
+            } else {
+                current += w + ' ';
+            }
+        }
+        if (current) chunks.push(current);
+
+        if (chunks.length > 0) {
+            let chunkIndex = 0;
+            const playNextChunk = () => {
+                if (chunkIndex >= chunks.length) {
+                    updateTtsButtons();
+                    updateTtsStatus('✅ आवाज समाप्त।');
+                    return;
+                }
+                const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(chunks[chunkIndex].trim())}&tl=ne&client=tw-ob`;
+                ttsAudio.src = url;
+                ttsAudio.onended = () => { chunkIndex++; playNextChunk(); };
+                ttsAudio.onerror = () => {
+                    console.warn('Google TTS chunk failed, falling back to native');
+                    playNativeSpeech(normalized);
+                };
+                ttsAudio.play().catch(() => playNativeSpeech(normalized));
+                updateTtsStatus(`🔊 Nepali आवाज चालु छ... (${chunkIndex+1}/${chunks.length})`);
+            };
+            playNextChunk();
+            updateTtsButtons();
+            return;
+        }
+    } catch (e) {
+        console.warn('Frontend Google TTS fallback failed:', e);
+    }
+
+    // ── Path C: Browser speech synthesis (final fallback) ──
     if (isSpeechSupported()) {
         const started = playNativeSpeech(normalized);
         if (started) return;
