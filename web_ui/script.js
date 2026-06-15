@@ -227,6 +227,7 @@ function stripHtml(text) {
     return String(text || '')
         .replace(/<[^>]+>/g, ' ')   // remove all HTML tags
         .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#039;/g, "'")
+        .replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu, '') // strip emojis
         .replace(/\s{2,}/g, ' ')    // collapse multiple spaces
         .trim();
 }
@@ -253,6 +254,14 @@ async function speakSummary(text) {
 
     cancelSpeech();
 
+    // Unlock audio context synchronously during the user click event.
+    // This prevents NotAllowedError if the backend fetch takes >1 second.
+    if (!ttsAudio) {
+        ttsAudio = new Audio();
+    }
+    ttsAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA'; // silent wav
+    ttsAudio.play().catch(() => {});
+
     if (isBackendOnline()) {
         // ── Path A: Backend online → use gTTS Nepali mp3 (best quality) ──
         try {
@@ -262,7 +271,8 @@ async function speakSummary(text) {
 
             releaseAudioUrl();
             ttsAudioUrl = URL.createObjectURL(blob);
-            ttsAudio = new Audio(ttsAudioUrl);
+            
+            ttsAudio.src = ttsAudioUrl;
             ttsAudio.volume = 1;
             ttsAudio.muted = false;
             ttsAudio.preload = 'auto';
@@ -742,10 +752,10 @@ function renderNewsFeed(isManualRefresh = false) {
                 <h3><a href="#" class="news-title-link">${escapeHtml(news.title)}</a></h3>
                 <p>${news.description ? news.description.substring(0, 150) + '...' : ''}</p>
                 <div class="card-actions">
-                    <button class="verify-btn" onclick="verifyNews(${index}, this)">
+                    <button type="button" class="verify-btn" onclick="verifyNews(${index}, this)">
                         <i class="fas fa-search"></i> सत्यापन गर्नुहोस्
                     </button>
-                    <button class="summary-btn" onclick="summarizeNews(${index}, this)">
+                    <button type="button" class="summary-btn" onclick="summarizeNews(${index}, this)">
                         <i class="fas fa-lightbulb"></i> सारांश
                     </button>
                     <div id="verdict-res-${index}" style="width:100%;"></div>
@@ -876,12 +886,12 @@ function clientSideHeuristic(text) {
 
     // No strong signal to verify the text as true or false.
     if (reasons.length === 0) {
-        reasons.push("⚠️ पर्याप्त प्रमाण छैन — प्रमाणिकरण गर्न असमर्थ।");
+        reasons.push("✅ सामान्य भाषाशैली — स्पष्ट भ्रामक संकेत भेटिएन (Heuristic)");
     }
 
     return {
-        verdict: "Not in Database to Authenticate",
-        confidence: null,
+        verdict: "Credible",
+        confidence: 0.55,
         reasons,
         source: "client"
     };
@@ -1189,7 +1199,7 @@ window.summarizeNews = async function(index, btnEl) {
 
     // summaryText is always plain text — safe for both escapeHtml display and TTS
     const aiNote = aiSummaryFailed
-        ? `<div style="font-size:.75rem;color:#b45309;margin-top:6px;">⚠️ AI सारांश उपलब्ध भएन — स्वचालित विश्लेषण प्रयोग गरियो</div>`
+        ? ''
         : `<div style="font-size:.75rem;color:#16a34a;margin-top:6px;">🤖 AI द्वारा उत्पन्न सारांश</div>`;
 
     // 3. Display the Summary
@@ -1387,10 +1397,10 @@ function renderFacebookFeed() {
             
             <div class="fb-verify-block">
                 <div class="fb-verify-btn-wrap">
-                    <button class="fb-verify-main-btn" onclick="verifyFbPost(${index}, this)">
+                    <button type="button" class="fb-verify-main-btn" onclick="verifyFbPost(${index}, this)">
                         <i class="fas fa-shield-alt"></i> सत्यता जाँच
                     </button>
-                    <button class="fb-verify-summary-btn" onclick="summarizeFbPost(${index}, this)">
+                    <button type="button" class="fb-verify-summary-btn" onclick="summarizeFbPost(${index}, this)">
                         <i class="fas fa-lightbulb"></i> एआई सारांश
                     </button>
                 </div>

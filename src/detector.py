@@ -377,11 +377,31 @@ def predict_authenticity(
     if heuristic_score > 0.3:
         reasons.append("📢 Detected sensationalism or clickbait markers")
     
-    # ===== NOT IN DATABASE FALLBACK =====
-    # Since the news is not verified in our databases, we return the fallback verdict
-    # but still provide all the extracted forensic findings (bias, heuristics, live cross-ref).
+    # ===== PHASE 4: ML PREDICTION =====
+    if pipeline:
+        ml_prob_fake = phase_4_ml_prediction(cleaned, pipeline)
+        
+        # Calculate final confidence and verdict based on ML + Heuristics + Live News
+        final_prob_fake = ml_prob_fake
+        if source_verified:
+            final_prob_fake -= 0.2  # Boost credibility if verified
+        
+        final_prob_fake += (heuristic_score * 0.2)  # Penalize for sensationalism
+        final_prob_fake = max(0.0, min(1.0, final_prob_fake))
+        
+        if final_prob_fake >= 0.5:
+            verdict = "Uncredible"
+            confidence = final_prob_fake
+            reasons.insert(0, f"🚨 ML मोडेल द्वारा संदिग्ध खबरको रूपमा वर्गीकृत")
+        else:
+            verdict = "Credible"
+            confidence = 1.0 - final_prob_fake
+            reasons.insert(0, f"✅ ML मोडेल द्वारा विश्वसनीय खबरको रूपमा वर्गीकृत")
+            
+        logger.info(f"Prediction: {verdict} (Confidence: {confidence:.2%}, Sensationalism: {heuristic_score:.2%})")
+        return verdict, confidence, reasons, heuristic_score, detected_parties
+
+    # ===== NO MODEL FALLBACK =====
     reasons.insert(0, "⚠️ समाचार हाम्रो डेटाबेसमा भेटिएन (Not in Database to Authenticate)")
-    
     logger.info(f"Prediction: Not in Database to Authenticate (Sensationalism: {heuristic_score:.2%})")
-    
     return "Not in Database to Authenticate", None, reasons, heuristic_score, detected_parties

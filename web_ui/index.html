@@ -6,6 +6,7 @@
     <title>TruthLens Nepal | समाचार जाँच केन्द्र</title>
     <meta name="description" content="TruthLens Nepal — नेपाली समाचारको सत्यता जाँच्न AI उपकरण।">
     <link rel="stylesheet" href="style.css?v=5">
+
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Hind:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -141,7 +142,7 @@
                             <input type="text" id="fb-post-author" placeholder="पेज वा प्रयोगकर्ताको नाम (उदा: News Nepal)">
                         </div>
                         <textarea id="fb-post-text" placeholder="फेसबुक पोस्टमा भएको समाचारको मुख्य विवरण यहाँ लेख्नुहोस् वा टाँस्नुहोस्..."></textarea>
-                        <button class="primary-btn fb-btn" id="btn-fb-import">
+                        <button type="button" class="primary-btn fb-btn" id="btn-fb-import">
                             <i class="fas fa-download"></i> पोस्ट आयात र जाँच गर्नुहोस्
                         </button>
                     </div>
@@ -160,7 +161,7 @@
                 <div class="scan-card">
                     <label class="scan-lbl"><i class="fas fa-paste"></i> यहाँ समाचारको पाठ टाँस्नुहोस्</label>
                     <textarea id="scan-text" placeholder="यहाँ शीर्षक वा पाठ टाँस्नुहोस्..."></textarea>
-                    <button class="primary-btn" id="btn-scan">
+                    <button type="button" class="primary-btn" id="btn-scan">
                         <i class="fas fa-microscope"></i> जाँच सुरु गर्नुहोस्
                     </button>
                     <div id="scan-result-container"></div>
@@ -173,7 +174,7 @@
                             <i class="fas fa-globe"></i>
                             <input type="text" id="url-input" placeholder="https://www.onlinekhabar.com/...">
                         </div>
-                        <button class="primary-btn url-btn" id="btn-url-scan">
+                        <button type="button" class="primary-btn url-btn" id="btn-url-scan">
                             <i class="fas fa-search"></i> जाँच
                         </button>
                     </div>
@@ -390,7 +391,7 @@
     </div>
 </div>
 
-<script src="script.js?v=5"></script>
+<script src="script.js?v=9"></script>
 <script>
     // Initialize public state elements
     const ut = document.getElementById('display-user-top');
