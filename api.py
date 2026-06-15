@@ -1,3 +1,4 @@
+# pyrefly: ignore [missing-import]
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 import os
@@ -6,9 +7,11 @@ import datetime
 import logging
 import io
 import requests
+# pyrefly: ignore [missing-import]
 from gtts import gTTS
 from src.detector import predict_authenticity, load_model
 from src.fetcher import fetch_news, scrape_article_from_url
+from src.transformer_detector import load_transformer_model, predict_with_transformer, is_transformer_available
 from src.config import (
     APP_NAME,
     APP_VERSION,
@@ -35,13 +38,21 @@ logger = logging.getLogger(__name__)
 # Initialise SQLite cache (creates data/cache.db if it does not exist)
 init_db()
 
-# Load model globally (best-effort)
+# Load models globally (best-effort)
+# 1. Try to load the fine-tuned Transformer model
+transformer_loaded = load_transformer_model()
+if transformer_loaded:
+    logger.info("XLM-RoBERTa Transformer model loaded — using as primary detector")
+else:
+    logger.info("Transformer model not available — will use TF-IDF fallback")
+
+# 2. Always load the TF-IDF fallback pipeline
 try:
     pipeline = load_model()
-    logger.info("Model loaded successfully")
+    logger.info("TF-IDF pipeline loaded successfully")
 except Exception as e:
     pipeline = None
-    logger.exception("Failed to load model")
+    logger.exception("Failed to load TF-IDF model")
 
 @app.route('/')
 def index():
@@ -88,7 +99,7 @@ def predict():
     if not text:
         return jsonify({"status": "error", "message": "No text provided"}), 400
 
-    # ── Cache lookup ──────────────────────────────────────────────────────────
+    # ── 1. Cache lookup ─────────────────────────────────────────────────────────
     cached = get_cached_prediction(text)
     if cached:
         logger.info("Prediction served from cache")
@@ -100,23 +111,48 @@ def predict():
             "parties":         cached['parties'],
             "timestamp":       datetime.datetime.now().isoformat(),
             "cached":          True,
+            "model_used":      cached.get('model_used', 'tfidf'),
         })
-    # ─────────────────────────────────────────────────────────────────────────
 
-    # Pass live_news=None to skip live cross-reference (too slow for real-time)
-    verdict, score, reasons, h_score, parties = predict_authenticity(text, pipeline, live_news=None)
+    # ── 2. Try Transformer model first ────────────────────────────────────────────
+    model_used = 'tfidf'
+    transformer_result = predict_with_transformer(text)
 
-    # Persist result so the next identical request is instant
-    set_cached_prediction(text, verdict, score, reasons, float(h_score), parties)
+    if transformer_result is not None:
+        verdict, prob_fake = transformer_result
+        model_used = 'xlm-roberta'
+        confidence = 1.0 - prob_fake if verdict == 'Credible' else prob_fake
+        reasons = [
+            f"🤖 XLM-RoBERTa Transformer analysis complete",
+            f"{'✅ Classified as credible' if verdict == 'Credible' else '🚨 Classified as uncredible'} (confidence: {confidence:.1%})",
+        ]
+        h_score = 0.0
+        parties = []
+    else:
+        # ── 3. Fallback to TF-IDF pipeline ─────────────────────────────────────────
+        verdict, confidence, reasons, h_score, parties = predict_authenticity(
+            text, pipeline, live_news=None
+        )
+        model_used = 'tfidf'
+
+    # ── 4. Save to cache ─────────────────────────────────────────────────────────
+    set_cached_prediction(
+        text, verdict,
+        float(confidence) if confidence is not None else None,
+        reasons + [f'model_used:{model_used}'],  # embed in reasons list for cache retrieval
+        float(h_score) if h_score else 0.0,
+        parties
+    )
 
     return jsonify({
         "verdict":         verdict,
-        "confidence":      float(score) if score is not None else None,
+        "confidence":      float(confidence) if confidence is not None else None,
         "reasons":         reasons,
-        "heuristic_score": float(h_score),
+        "heuristic_score": float(h_score) if h_score else 0.0,
         "parties":         parties,
         "timestamp":       datetime.datetime.now().isoformat(),
         "cached":          False,
+        "model_used":      model_used,
     })
 
 @app.route('/api/scrape', methods=['GET', 'POST'])
@@ -159,16 +195,25 @@ def summarize_news():
     # ─────────────────────────────────────────────────────────────────────────
 
     prompt = (
-        "You are a professional Nepali news broadcaster. "
-        "Given a news headline and preview text, write a detailed, multi-sentence summary in Nepali. "
-        "Include the main facts, context, background, and any relevant details using 6-8 sentences. "
-        "Write in a clear, informative broadcaster style. "
-        "If the preview text is in English, still answer in Nepali while preserving the meaning. "
-        f"Headline: {title}\n"
+        "You are a senior Nepali news analyst and broadcaster. "
+        "Given a news headline and preview text, write a comprehensive, detailed summary in Nepali. "
+        "Your summary MUST be a long, well-structured paragraph of 10-15 sentences minimum. "
+        "Cover ALL of the following aspects in depth:\n"
+        "1. The core news event — what happened, who is involved, when and where\n"
+        "2. Background and historical context — why this matters, what led to this\n"
+        "3. Key details, statistics, quotes or data points from the article\n"
+        "4. Impact and implications — how this affects the public, economy, or politics\n"
+        "5. Expert opinions or official statements if applicable\n"
+        "6. What might happen next — future outlook or next steps\n\n"
+        "Write in a professional, informative broadcast journalism style. "
+        "Use rich vocabulary and provide thorough analysis. Do NOT write a short summary. "
+        "The summary should feel like a full news report, not a brief headline recap. "
+        "If the preview text is in English, still answer in Nepali while preserving all meaning and details. "
+        f"\nHeadline: {title}\n"
         f"Preview: {description}\n"
         f"Source: {source or 'Unknown'}\n"
-        f"URL: {url or 'Unknown'}\n"
-        "Return only the summary text."
+        f"URL: {url or 'Unknown'}\n\n"
+        "Return only the detailed summary text in Nepali."
     )
 
     if not OPENAI_API_KEY:
@@ -184,14 +229,14 @@ def summarize_news():
             json={
                 'model': OPENAI_MODEL,
                 'messages': [
-                    {'role': 'system', 'content': 'You summarize news articles effectively in Nepali with good context and detail.'},
+                    {'role': 'system', 'content': 'You are an expert Nepali news analyst. You write comprehensive, long-form news summaries in Nepali with rich detail, context, background, impact analysis, and expert commentary. Never write short summaries. Always provide thorough, paragraph-length analysis.'},
                     {'role': 'user', 'content': prompt}
                 ],
-                'temperature': 0.35,
-                'max_tokens': 400,
+                'temperature': 0.4,
+                'max_tokens': 900,
                 'top_p': 1,
             },
-            timeout=25
+            timeout=40
         )
         resp.raise_for_status()
         content = resp.json()
@@ -205,9 +250,7 @@ def summarize_news():
         return jsonify({"status": "success", "summary": summary, "cached": False})
     except Exception as e:
         logger.exception('LLM summary request failed')
-        fallback = (title + ' ' + description).strip()
-        fallback = fallback[:500] + ('...' if len(fallback) > 500 else '')
-        return jsonify({"status": "success", "summary": fallback, "cached": False})
+        return jsonify({"status": "error", "message": "LLM failed or not configured"}), 500
 
 @app.route('/api/tts', methods=['POST'])
 def generate_tts():
@@ -216,7 +259,7 @@ def generate_tts():
     if not text:
         return jsonify({"status": "error", "message": "No text provided"}), 400
 
-    # Use OpenAI audio generation if configured, otherwise fall back to gTTS
+    # Use OpenAI audio generation if configured
     if OPENAI_API_KEY and OPENAI_AUDIO_URL:
         try:
             resp = requests.post(
@@ -244,10 +287,13 @@ def generate_tts():
                 download_name='tts-nepali.mp3'
             )
         except Exception as e:
-            logger.warning('OpenAI audio generation failed, falling back to gTTS: %s', e)
+            logger.warning('OpenAI audio generation failed: %s', e)
 
+    # Fallback to gTTS (Female Nepali Voice)
     try:
-        tts = gTTS(text=text, lang='ne')
+        # Truncate text to avoid Google Translate rate limits on massive AI summaries
+        safe_text = text[:600] + ("..." if len(text) > 600 else "")
+        tts = gTTS(text=safe_text, lang='ne')
         mp3_bytes = io.BytesIO()
         tts.write_to_fp(mp3_bytes)
         mp3_bytes.seek(0)
@@ -258,8 +304,8 @@ def generate_tts():
             download_name='tts-nepali.mp3'
         )
     except Exception as e:
-        logger.exception("TTS generation failed")
-        return jsonify({"status": "error", "message": str(e)}), 500
+        logger.exception("gTTS generation failed")
+        return jsonify({"status": "error", "message": "Backend TTS not available: " + str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
