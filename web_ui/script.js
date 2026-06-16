@@ -764,9 +764,13 @@ function updateNepaliDate() {
 function renderNewsFeed(isManualRefresh = false) {
     if (!newsContainer) return;
     
-    // Fade-out current cards
-    newsContainer.style.opacity = '0';
-    newsContainer.style.transition = 'opacity 0.25s ease';
+    // Show skeleton while loading
+    newsContainer.innerHTML = `
+        <div class="news-card skeleton-card"></div>
+        <div class="news-card skeleton-card"></div>
+        <div class="news-card skeleton-card"></div>
+    `;
+    newsContainer.style.opacity = '1';
     
     setTimeout(() => {
         newsContainer.innerHTML = '';

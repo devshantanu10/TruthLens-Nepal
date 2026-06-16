@@ -1449,3 +1449,16 @@ body {
     transform: none !important;
     pointer-events: none;
 }
+
+/* ── Skeleton Loader ── */
+@keyframes skeleton-pulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; }
+    100% { opacity: 0.6; }
+}
+.skeleton-card {
+    background: #e2e8f0 !important;
+    animation: skeleton-pulse 1.5s infinite ease-in-out;
+    min-height: 150px;
+    border: none !important;
+}
