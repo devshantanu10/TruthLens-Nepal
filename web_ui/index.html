@@ -208,7 +208,10 @@
                 </div>
                 <div class="scan-card">
                     <label class="scan-lbl"><i class="fas fa-paste"></i> यहाँ समाचारको पाठ टाँस्नुहोस्</label>
-                    <textarea id="scan-text" placeholder="यहाँ शीर्षक वा पाठ टाँस्नुहोस्..."></textarea>
+                    <div style="position: relative; margin-bottom: 14px;">
+                        <textarea id="scan-text" placeholder="यहाँ शीर्षक वा पाठ टाँस्नुहोस्..."></textarea>
+                        <div id="char-counter" style="position: absolute; bottom: 16px; right: 16px; font-size: 0.75rem; color: #64748B; font-weight: 700; pointer-events: none;">0 / 5000</div>
+                    </div>
                     <button type="button" class="primary-btn" id="btn-scan">
                         <i class="fas fa-microscope"></i> जाँच सुरु गर्नुहोस्
                     </button>

@@ -1267,10 +1267,21 @@ window.summarizeNews = async function(index, btnEl) {
 };
 
 // ── Forensic Scans ──
+const charCounter = document.getElementById('char-counter');
+if (scanText && charCounter) {
+    scanText.addEventListener('input', () => {
+        const len = scanText.value.length;
+        charCounter.textContent = `${len} / 5000`;
+        charCounter.style.color = len > 5000 ? '#DC2626' : '#64748B';
+    });
+}
+
 if (btnScan) {
     btnScan.addEventListener('click', async () => {
         const text = scanText.value.trim();
-        if (text.length < 10) return alert('पाठ धेरै छोटो छ।');
+        if (text.length < 10) return alert('पाठ धेरै छोटो छ। कम्तिमा १० अक्षर हुनुपर्छ।');
+        if (text.length > 5000) return alert('पाठ धेरै लामो छ। कृपया ५००० अक्षर भन्दा कम राख्नुहोस्।');
+        
         btnScan.innerHTML = 'विश्लेषण गर्दै...';
         btnScan.disabled = true;
         
