@@ -1328,20 +1328,33 @@ body {
     box-shadow: 0 14px 32px -10px rgba(220,38,38,0.55);
 }
 
-/* Cards: premium ring + floating lift micro-interaction */
+/* Cards: Glassmorphism base + floating lift micro-interaction */
 .news-card, .scan-card, .url-scan-card, .widget, .kpi-card,
 .admin-panel-card, .fb-import-card, .fb-post-card, .trending-card, .stat-card {
     border-radius: 14px;
     box-shadow: var(--shadow-ring);
-    border: 1px solid rgba(148, 163, 184, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.75) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     /* Adding cubic-bezier for a spring-like, premium hover animation */
-    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease, border-color 0.3s ease;
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease, border-color 0.3s ease, background 0.3s ease;
 }
 .news-card:hover, .scan-card:hover, .widget:hover, .stat-card:hover,
 .admin-panel-card:hover, .fb-post-card:hover, .trending-card:hover, .kpi-card:hover {
     transform: translateY(-5px) scale(1.01);
-    box-shadow: 0 22px 48px -14px rgba(15, 76, 129, 0.25);
-    border-color: rgba(37, 99, 235, 0.4);
+    box-shadow: 0 22px 48px -14px rgba(185, 28, 28, 0.25); /* Crimson Glow */
+    border-color: rgba(185, 28, 28, 0.4);
+    background: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Authentic Facebook Feed Polish */
+.fb-import-card, .fb-post-card {
+    border-left: 4px solid #1877F2 !important;
+}
+.fb-post-card:hover {
+    border-color: #1877F2 !important;
+    box-shadow: 0 22px 48px -14px rgba(24, 119, 242, 0.25) !important; /* Meta Blue Glow */
 }
 
 /* Sidebar widget titles get serif accent */
