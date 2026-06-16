@@ -31,22 +31,22 @@
         <div id="backend-status" class="backend-status offline" style="display: none;">पृष्ठ भरिएको छैन: Flask backend चलाउने `python api.py` र पृष्ठ रिफ्रेश गर्नुहोस्।</div>
     </div>
 
-    <!-- Main Header -->
-    <header class="main-header">
+<!-- Main Header -->
+    <header class="main-header" role="banner">
         <div class="header-inner">
             <div class="header-logo">
-                <span class="logo-icon"><img src="logo.png" alt="TruthLens Nepal" class="header-logo-img"></span>
+                <span class="logo-icon"><img src="logo.png" alt="TruthLens Nepal Official Logo" class="header-logo-img"></span>
                 <div>
                     <div class="logo-name">TruthLens <em>Nepal</em></div>
                     <div class="logo-tagline">समाचार जाँच केन्द्र</div>
                 </div>
             </div>
-            <div class="header-search-bar">
-                <input type="text" placeholder="समाचार खोज्नुहोस्" id="header-search">
-                <button class="search-go"><i class="fas fa-search"></i></button>
+            <div class="header-search-bar" role="search">
+                <input type="text" placeholder="समाचार खोज्नुहोस्" id="header-search" aria-label="समाचार खोज्नुहोस् (Search News)">
+                <button class="search-go" aria-label="खोज्नुहोस् (Search)"><i class="fas fa-search" aria-hidden="true"></i></button>
             </div>
             <div class="header-user-actions">
-                <span class="user-tag"><i class="fas fa-user-circle"></i> <span id="display-user">Guest</span></span>
+                <div class="user-tag" role="button" tabindex="0" aria-label="User Profile"><i class="fas fa-user-circle" aria-hidden="true"></i> <span id="display-user">Guest</span></div>
             </div>
         </div>
     </header>
