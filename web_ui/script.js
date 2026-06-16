@@ -1595,3 +1595,52 @@ if (scrollToTopBtn) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 }
+
+// ── Modern Toast Notification System (Overrides native alert) ──
+window.alert = function(message) {
+    // Remove existing toast if one is already showing
+    const existingToast = document.querySelector('.modern-toast');
+    if (existingToast) existingToast.remove();
+
+    // Create the new toast element
+    const toast = document.createElement('div');
+    toast.className = 'modern-toast';
+    toast.innerHTML = `<i class="fas fa-bell" style="color: #F87171;"></i> <span>${message}</span>`;
+    
+    // Apply styling dynamically
+    Object.assign(toast.style, {
+        position: 'fixed',
+        bottom: '40px',
+        left: '50%',
+        transform: 'translateX(-50%) translateY(50px)',
+        background: 'rgba(15, 23, 42, 0.95)',
+        color: '#F8FAFC',
+        padding: '14px 28px',
+        borderRadius: '50px',
+        fontSize: '0.95rem',
+        fontWeight: '600',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        boxShadow: '0 15px 35px rgba(0,0,0,0.25)',
+        zIndex: '99999',
+        backdropFilter: 'blur(10px)',
+        opacity: '0',
+        transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+    });
+
+    document.body.appendChild(toast);
+
+    // Animate in (slide up)
+    setTimeout(() => {
+        toast.style.transform = 'translateX(-50%) translateY(0)';
+        toast.style.opacity = '1';
+    }, 10);
+
+    // Animate out and remove after 3.5 seconds
+    setTimeout(() => {
+        toast.style.transform = 'translateX(-50%) translateY(20px)';
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 400);
+    }, 3500);
+};
