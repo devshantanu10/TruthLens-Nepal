@@ -1,12 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Hind:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-    --primary: #0F4C81;
-    --primary-dark: #0B3B63;
-    --primary-soft: #EFF6FF;
-    --accent: #DC2626;
-    --accent-soft: #FEE2E2;
-    --danger: #B91C1C;
+    --primary: #B91C1C; /* Crimson Red to match shield */
+    --primary-dark: #7F1D1D;
+    --primary-soft: #FEF2F2;
+    --accent: #D97706; /* Warm Gold to match Nepal map accent */
+    --accent-soft: #FEF3C7;
+    --danger: #991B1B;
     --danger-soft: #FEE2E2;
     --success: #16A34A;
     --bg: #F8FAFC;
@@ -986,12 +986,12 @@ body {
    ═══════════════════════════════════════════════════════════ */
 
 :root {
-    --primary-glow: #2563eb;
-    --gradient-primary: linear-gradient(135deg, #0F4C81 0%, #1e40af 50%, #2563eb 100%);
-    --gradient-hero: linear-gradient(135deg, rgba(15,76,129,0.92) 0%, rgba(11,59,99,0.85) 60%, rgba(30,64,175,0.78) 100%);
-    --gradient-soft: linear-gradient(180deg, #ffffff 0%, #EFF6FF 100%);
-    --shadow-elegant: 0 24px 60px -20px rgba(15,76,129,0.35);
-    --shadow-ring: 0 0 0 1px rgba(15,76,129,0.06), 0 12px 32px -12px rgba(15,23,42,0.18);
+    --primary-glow: #DC2626;
+    --gradient-primary: linear-gradient(135deg, #B91C1C 0%, #991B1B 50%, #7F1D1D 100%);
+    --gradient-hero: linear-gradient(135deg, rgba(185,28,28,0.92) 0%, rgba(153,27,27,0.85) 60%, rgba(127,29,29,0.78) 100%);
+    --gradient-soft: linear-gradient(180deg, #ffffff 0%, #FEF2F2 100%);
+    --shadow-elegant: 0 24px 60px -20px rgba(185,28,28,0.35);
+    --shadow-ring: 0 0 0 1px rgba(185,28,28,0.06), 0 12px 32px -12px rgba(15,23,42,0.18);
     --font-display: 'Fraunces', 'Noto Serif Devanagari', 'Noto Sans Devanagari', serif;
     --font-body: 'Inter', 'Hind', 'Noto Sans Devanagari', system-ui, sans-serif;
 }
