@@ -8,7 +8,9 @@
     <meta name="referrer" content="no-referrer">
     <link rel="stylesheet" href="style.css?v=5">
 
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Hind:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,600;1,9..144,700&family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Noto+Serif+Devanagari:wght@400;600;700&family=Hind:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -71,6 +73,61 @@
             </div>
         </div>
     </div>
+
+    <!-- ===================== HERO BANNER ===================== -->
+    <section class="hero-banner" id="hero">
+        <div class="hero-inner">
+            <div class="hero-copy">
+                <span class="hero-eyebrow"><span class="dot"></span> AI-संचालित नेपाली समाचार सत्यापन</span>
+                <h1 class="hero-title">
+                    सत्य पहिचान्नुहोस्,<br>
+                    <span class="highlight">हिमालको स्पष्टता</span>सँग।
+                </h1>
+                <p class="hero-subtitle">
+                    TruthLens Nepal ले नेपाली समाचार, फेसबुक पोस्ट र URL को विश्वसनीयता
+                    रियल-टाइममा जाँच गर्छ — AI मोडेल, विश्वसनीय स्रोत र पारदर्शी विश्लेषणसँग।
+                </p>
+                <div class="hero-cta-row">
+                    <button type="button" class="hero-btn-primary" onclick="document.querySelector('[data-target=scan]').click(); document.getElementById('view-scan').scrollIntoView({behavior:'smooth'});">
+                        <i class="fas fa-microscope"></i> समाचार जाँच गर्नुहोस्
+                    </button>
+                    <button type="button" class="hero-btn-ghost" onclick="document.querySelector('[data-target=feed]').click(); document.getElementById('view-feed').scrollIntoView({behavior:'smooth'});">
+                        <i class="fas fa-broadcast-tower"></i> ताजा समाचार हेर्नुहोस्
+                    </button>
+                </div>
+                <div class="hero-trust">
+                    <div class="hero-trust-item">
+                        <span class="hero-trust-num">९२.४%</span>
+                        <span class="hero-trust-lbl">मोडेल शुद्धता</span>
+                    </div>
+                    <div class="hero-trust-item">
+                        <span class="hero-trust-num">२,४५०+</span>
+                        <span class="hero-trust-lbl">सत्यापित नमूना</span>
+                    </div>
+                    <div class="hero-trust-item">
+                        <span class="hero-trust-num">६</span>
+                        <span class="hero-trust-lbl">विश्वसनीय स्रोत</span>
+                    </div>
+                </div>
+            </div>
+            <aside class="hero-card" aria-label="Key features">
+                <div class="hero-card-hdr">
+                    <div class="ico"><i class="fas fa-shield-halved"></i></div>
+                    <div>
+                        <strong>सत्यापन इन्जिन</strong>
+                        <span>v2.1 — LIVE</span>
+                    </div>
+                </div>
+                <ul class="hero-feature-list">
+                    <li><i class="fas fa-check"></i> URL, पाठ र फेसबुक पोस्ट जाँच</li>
+                    <li><i class="fas fa-check"></i> AI सारांश र पाठ-देखि-वाणी (TTS)</li>
+                    <li><i class="fas fa-check"></i> विश्वसनीय स्रोत क्रस-रेफरेन्स</li>
+                    <li><i class="fas fa-check"></i> उच्च-जोखिम संदिग्ध समाचार अलर्ट</li>
+                </ul>
+            </aside>
+        </div>
+        <div class="hero-silhouette-base" aria-hidden="true"></div>
+    </section>
 
     <!-- Dashboard Layout -->
     <div class="dashboard-wrap">
