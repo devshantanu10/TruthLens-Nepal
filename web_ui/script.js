@@ -38,6 +38,203 @@ async function fetchScrape(url) {
     throw new Error('Unable to reach backend scrape API. कृपया Flask चलाउनुहोस् र पेजलाई http://localhost:5000 बाट खोल्नुहोस्।');
 }
 
+function detectFactCheckLanguage(text) {
+    const value = text || '';
+    const devanagari = (value.match(/[\u0900-\u097F]/g) || []).length;
+    const latin = (value.match(/[A-Za-z]/g) || []).length;
+    if (devanagari > latin) return 'ne';
+    if (latin > 0) return 'en';
+    return 'ne';
+}
+
+function cleanFactCheckQuery(query) {
+    let q = (query || '').replace(/\s+/g, ' ').trim();
+    if (!q) return '';
+
+    if (q.includes('|')) {
+        q = q.split('|')[0].trim();
+    }
+
+    const dashMatch = q.match(/^(.+?)\s+[-–]\s+[^-–|]{1,48}$/);
+    if (dashMatch) {
+        const head = dashMatch[1].trim();
+        if (head.split(/\s+/).length >= 4) {
+            q = head;
+        }
+    }
+
+    return q.replace(/\s*[-|]\s*\d{4}\s*$/, '').trim();
+}
+
+function normalizeFactCheckResponse(data, query) {
+    const payload = (data && typeof data === 'object') ? { ...data } : {};
+    if (!Array.isArray(payload.claims)) {
+        payload.claims = [];
+    }
+    if (!payload.query_used_by_backend) {
+        payload.query_used_by_backend = query;
+    }
+    if (!payload.languageCode) {
+        payload.languageCode = detectFactCheckLanguage(query);
+    }
+    return payload;
+}
+
+const FACTCHECK_FALSE_RATINGS = [
+    'false', 'fake', 'uncredible', 'incorrect', 'misleading', 'distorts',
+    'भ्रामक', 'झूटो', 'गलत', 'अपुष्ट', 'कथित'
+];
+const FACTCHECK_TRUE_RATINGS = [
+    'true', 'correct', 'credible', 'accurate', 'authentic', 'authenticated',
+    'सत्य', 'वास्तविक', 'सहि', 'सही'
+];
+
+function getFactCheckRatingClass(rating) {
+    const normalized = (rating || '').toLowerCase();
+    if (FACTCHECK_FALSE_RATINGS.some((term) => normalized.includes(term))) {
+        return 'factcheck-badge-false';
+    }
+    if (FACTCHECK_TRUE_RATINGS.some((term) => normalized.includes(term))) {
+        return 'factcheck-badge-true';
+    }
+    return 'factcheck-badge-neutral';
+}
+
+function isGoogleFactCheckAuthenticated(fcData) {
+    if (!fcData || !Array.isArray(fcData.claims) || fcData.claims.length === 0) {
+        return false;
+    }
+
+    return fcData.claims.some((claim) =>
+        (claim.claimReview || []).some((review) =>
+            getFactCheckRatingClass(review.textualRating) === 'factcheck-badge-true'
+        )
+    );
+}
+
+function buildFactCheckQueries(query) {
+    const cleaned = cleanFactCheckQuery(query);
+    const normalized = cleaned || (query || '').replace(/\s+/g, ' ').trim();
+    if (!normalized) return [];
+
+    const queries = [];
+    const add = (value) => {
+        const item = (value || '').replace(/\s+/g, ' ').trim();
+        if (item && !queries.includes(item)) {
+            queries.push(item);
+        }
+    };
+
+    add(normalized);
+    if (cleaned && cleaned !== normalized) {
+        add(query.replace(/\s+/g, ' ').trim());
+    }
+
+    const words = normalized.split(/\s+/);
+    if (words.length > 8) {
+        add(words.slice(0, 8).join(' '));
+    }
+    if (words.length > 5) {
+        add(words.slice(0, 5).join(' '));
+    }
+
+    const stopWords = new Set([
+        'the', 'a', 'an', 'for', 'of', 'to', 'in', 'on', 'and', 'or', 'with', 'from', 'by',
+        'at', 'least', 'has', 'have', 'been', 'said', 'that', 'recent', 'new', 'news',
+        'र', 'को', 'मा', 'ले', 'गर्दै', 'भएको', 'हुने', 'छ', 'छन्', 'गरेको', 'भन्छ', 'भने'
+    ]);
+    const keywords = words.filter((word) => !stopWords.has(word.toLowerCase()));
+    if (keywords.length >= 3) {
+        add(keywords.slice(0, 6).join(' '));
+        add(keywords.slice(0, 4).join(' '));
+    }
+
+    return queries;
+}
+
+async function fetchGoogleFactCheck(query) {
+    if (!query) return null;
+
+    const candidates = buildFactCheckQueries(query);
+    let bestResult = null;
+
+    for (const candidate of candidates) {
+        const result = await executeFactCheckFetch(candidate);
+        if (!result) continue;
+
+        const normalized = normalizeFactCheckResponse(result, candidate);
+        if (!bestResult) {
+            bestResult = normalized;
+        }
+
+        if (normalized.claims.length > 0) {
+            normalized.queries_tried = candidates;
+            return normalized;
+        }
+    }
+
+    if (bestResult) {
+        bestResult.queries_tried = candidates;
+    }
+    return bestResult;
+}
+
+async function executeFactCheckFetch(query) {
+    const body = JSON.stringify({ query });
+    const postEndpoints = [
+        `${API_BASE}/factcheck`,
+        'http://127.0.0.1:5000/api/factcheck',
+        'http://localhost:5000/api/factcheck'
+    ];
+    const getEndpoints = [
+        `${API_BASE}/factcheck?query=${encodeURIComponent(query)}`,
+        `http://127.0.0.1:5000/api/factcheck?query=${encodeURIComponent(query)}`,
+        `http://localhost:5000/api/factcheck?query=${encodeURIComponent(query)}`
+    ];
+
+    for (const endpoint of postEndpoints) {
+        try {
+            const resp = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                return normalizeFactCheckResponse(data, query);
+            }
+            if (data && data.status === 'error') {
+                return normalizeFactCheckResponse(data, query);
+            }
+        } catch (err) {
+            console.warn(`Factcheck POST failed on ${endpoint}:`, err.message || err);
+        }
+    }
+
+    for (const endpoint of getEndpoints) {
+        try {
+            const resp = await fetch(endpoint);
+            const data = await resp.json();
+            if (resp.ok) {
+                return normalizeFactCheckResponse(data, query);
+            }
+            if (data && data.status === 'error') {
+                return normalizeFactCheckResponse(data, query);
+            }
+        } catch (err) {
+            console.warn(`Factcheck GET failed on ${endpoint}:`, err.message || err);
+        }
+    }
+
+    return {
+        status: 'error',
+        message: 'Unable to reach backend fact-check API. Start Flask with python api.py and open the app from http://localhost:5000.',
+        query_used_by_backend: query,
+        claims: [],
+        languageCode: detectFactCheckLanguage(query)
+    };
+}
+
 let selectedTtsVoice = null;
 const ttsState = {
     voice: null,
@@ -943,11 +1140,15 @@ function clientSideHeuristic(text) {
 }
 
 // ── AI Prediction Handler ──
-async function handlePrediction(text, container) {
+async function handlePrediction(text, container, titleForFactCheck = null) {
     // Show loading state
     container.innerHTML = `<div style="padding:12px;color:#999;font-size:.85rem;display:flex;align-items:center;gap:8px;">
         <i class="fas fa-spinner fa-spin"></i> विश्लेषण गर्दै...
     </div>`;
+
+    // Fetch Google Fact Check and ML prediction in parallel
+    const factCheckQuery = titleForFactCheck || text;
+    const factCheckPromise = fetchGoogleFactCheck(factCheckQuery);
 
     let res = null;
     let usedFallback = false;
@@ -997,6 +1198,113 @@ async function handlePrediction(text, container) {
 
     const reasonsList = (res.reasons || []).length > 0 ? res.reasons : ['⚠️ पर्याप्त जानकारी उपलब्ध भएन।'];
 
+    // Wait for Fact Check result
+    let fcHtml = '';
+    try {
+        const fcData = await factCheckPromise;
+        if (fcData) {
+            const apiError = fcData.status === 'error';
+            const hasClaims = Array.isArray(fcData.claims) && fcData.claims.length > 0;
+            const queryUsed = fcData.query_used_by_backend || factCheckQuery;
+            const queriesTried = Array.isArray(fcData.queries_tried) && fcData.queries_tried.length > 0
+                ? fcData.queries_tried
+                : [queryUsed];
+            let claimsListHtml = '';
+            let totalReviews = 0;
+
+            if (hasClaims) {
+                claimsListHtml = fcData.claims.map(claim => {
+                    return (claim.claimReview || []).map(review => {
+                        totalReviews++;
+                        const badgeClass = getFactCheckRatingClass(review.textualRating);
+
+                        const publisherName = review.publisher ? review.publisher.name : 'Unknown Publisher';
+                        const reviewUrl = review.url || '#';
+
+                        return `
+                            <div class="factcheck-card">
+                                <div class="factcheck-claim-text">दाबी: "${escapeHtml(claim.text)}"</div>
+                                <div class="factcheck-meta-row">
+                                    ${claim.claimant ? `<span><strong>दाबीकर्ता:</strong> ${escapeHtml(claim.claimant)}</span>` : ''}
+                                    <span><strong>सत्यापन:</strong> <span class="factcheck-badge ${badgeClass}">${escapeHtml(review.textualRating || 'Unknown')}</span></span>
+                                    <span><strong>प्रकाशक:</strong> <a href="${escapeHtml(reviewUrl)}" target="_blank" class="factcheck-source-link">${escapeHtml(publisherName)} <i class="fas fa-external-link-alt" style="font-size:0.65rem;"></i></a></span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }).join('');
+            }
+
+            if (apiError) {
+                claimsListHtml = `
+                    <div class="factcheck-no-results">
+                        <i class="fas fa-exclamation-triangle"></i> Google Fact Check त्रुटि: ${escapeHtml(fcData.message || 'अज्ञात त्रुटि')}
+                    </div>
+                `;
+            } else if (totalReviews === 0) {
+                claimsListHtml = `
+                    <div class="factcheck-empty-db">
+                        <i class="fas fa-circle-check"></i>
+                        <div>
+                            <strong>Google Fact Check सफलतापूर्वक खोजियो</strong>
+                            <p>यो विशेष दाबीको लागि कुनै प्रकाशित fact-check फेला परेन। यो नयाँ वा स्थानीय समाचारका लागि सामान्य हो — Google ले मात्र पहिले नै जाँच गरिएका दाबीहरू मात्र देखाउँछ, सबै समाचार होइन।</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const googleAuthenticated = !apiError && isGoogleFactCheckAuthenticated(fcData);
+            const authenticatedHtml = googleAuthenticated
+                ? `<div class="factcheck-authenticated">
+                        <i class="fas fa-circle-check"></i> Fact checked by Google Fact Check — authenticated
+                   </div>`
+                : '';
+
+            fcHtml = `
+                <div class="factcheck-section">
+                    <div class="factcheck-title">
+                        <i class="fas fa-shield-halved"></i> Google Fact Check नतिजा
+                    </div>
+                    ${authenticatedHtml}
+                    <div class="factcheck-query-meta">
+                        <span><strong>पठाइएको क्वेरी:</strong> ${escapeHtml(queryUsed)}</span>
+                        ${fcData.languageCode ? `<span><strong>मिलान भाषा:</strong> ${escapeHtml(fcData.matched_language || fcData.languageCode)}</span>` : ''}
+                        ${Array.isArray(fcData.search_strategies_tried) && fcData.search_strategies_tried.length > 0
+                            ? `<span><strong>खोज रणनीति:</strong> ${escapeHtml(fcData.search_strategies_tried.join(', '))}</span>`
+                            : ''}
+                        ${queriesTried.length > 1 ? `<span><strong>प्रयास गरिएका क्वेरी:</strong> ${escapeHtml(queriesTried.join(' | '))}</span>` : ''}
+                    </div>
+                    <div class="factcheck-card-list">
+                        ${claimsListHtml}
+                    </div>
+                </div>
+            `;
+        } else {
+            fcHtml = `
+                <div class="factcheck-section">
+                    <div class="factcheck-title">
+                        <i class="fas fa-shield-halved"></i> Google Fact Check नतिजा
+                    </div>
+                    <div class="factcheck-no-results">
+                        <i class="fas fa-exclamation-triangle"></i> Google Fact Check API सँग सम्पर्क हुन सकेन।
+                    </div>
+                </div>
+            `;
+        }
+    } catch (fcErr) {
+        console.error("Fact check resolving error:", fcErr);
+        fcHtml = `
+            <div class="factcheck-section">
+                <div class="factcheck-title">
+                    <i class="fas fa-shield-halved"></i> Google Fact Check नतिजा
+                </div>
+                <div class="factcheck-no-results">
+                    <i class="fas fa-exclamation-triangle"></i> Google Fact Check त्रुटि: ${escapeHtml(fcErr.message || fcErr)}
+                </div>
+            </div>
+        `;
+    }
+
     container.innerHTML = `
         <div class="verdict-box ${vClass}" style="margin-top:10px;">
             <div class="verdict-title">${icon} ${verdictNe} — ${confidenceText}</div>
@@ -1005,6 +1313,7 @@ async function handlePrediction(text, container) {
                 <ul>${reasonsList.map(r => `<li>${r}</li>`).join('')}</ul>
             </div>
             ${engineNote}
+            ${fcHtml}
         </div>
     `;
     return verdictRaw;
@@ -1018,7 +1327,7 @@ window.verifyNews = async function(index, btnEl) {
     btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> जाँच भइरहेको छ...';
     btnEl.disabled = true;
     
-    const verdict = await handlePrediction(news.title + " " + (news.description || ""), resContainer);
+    const verdict = await handlePrediction(news.title + " " + (news.description || ""), resContainer, news.title);
     
     btnEl.innerHTML = verdict === "Uncredible" ? '🚨 संदिग्ध' : '✅ विश्वसनीय';
     btnEl.disabled = false;
@@ -1299,29 +1608,35 @@ if (btnScan) {
 const btnUrlScan = document.getElementById('btn-url-scan');
 if (btnUrlScan) {
     btnUrlScan.addEventListener('click', async () => {
-        const url = document.getElementById('url-input').value;
+        const urlInputEl = document.getElementById('url-input');
+        const url = urlInputEl ? urlInputEl.value.trim() : '';
         if (!url) return alert('URL राख्नुहोस्।');
-        btnUrlScan.innerHTML = 'प्रक्रियामा...';
+        
+        const urlResultContainer = document.getElementById('url-scan-result-container');
+        if (urlResultContainer) {
+            urlResultContainer.innerHTML = '';
+        }
+        
+        btnUrlScan.innerHTML = '<i class="fas fa-spinner fa-spin"></i> प्रक्रियामा...';
         btnUrlScan.disabled = true;
         
         try {
-            const sResp = await fetch(`${API_BASE}/scrape`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: url })
-            });
-            const sData = await sResp.json();
+            const sData = await fetchScrape(url);
             
-            // Create a temp div for URL scan results if needed, or use alert
-            const tempDiv = document.createElement('div');
-            const verdict = await handlePrediction(sData.title + " " + sData.text, tempDiv);
-            alert(`सत्यापन नतिजा: ${verdict === "Uncredible" ? "झूटा समाचार" : "विश्वसनीय"}`);
-            addToHistory(sData.title.substring(0, 30) + '...', verdict);
+            if (urlResultContainer) {
+                const verdict = await handlePrediction(sData.title + " " + (sData.text || ""), urlResultContainer);
+                addToHistory(sData.title.substring(0, 30) + '...', verdict);
+            } else {
+                const tempDiv = document.createElement('div');
+                const verdict = await handlePrediction(sData.title + " " + (sData.text || ""), tempDiv);
+                alert(`सत्यापन नतिजा: ${verdict === "Uncredible" ? "झूटा समाचार" : "विश्वसनीय"}`);
+                addToHistory(sData.title.substring(0, 30) + '...', verdict);
+            }
         } catch (e) {
             console.error(e);
-            alert('URL विश्लेषण असफल भयो।');
+            alert('URL विश्लेषण असफल भयो। विवरण: ' + e.message);
         }
-        btnUrlScan.innerHTML = 'विश्लेषण';
+        btnUrlScan.innerHTML = 'जाँच';
         btnUrlScan.disabled = false;
     });
 }

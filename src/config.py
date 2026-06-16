@@ -50,6 +50,15 @@ DATA_PATH_FAKE = str(DATA_DIR / "Fake.csv")
 # API Keys (Use environment variables in production)
 NEWSDATA_API_KEY = os.getenv("NEWSDATA_API_KEY", "pub_72186835a6435c44f33161c575a6c38210356")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
+# Google Fact Check Tools API (https://developers.google.com/fact-check/tools/api)
+GOOGLE_FACT_CHECK_API_KEY = os.getenv(
+    "GOOGLE_FACT_CHECK_API_KEY",
+    os.getenv("GOOGLE_API_KEY", "AIzaSyAfXz1H1hm8lEWfiUXawMxmpqfZRU1-Fpo"),
+)
+GOOGLE_FACT_CHECK_API_URL = os.getenv(
+    "GOOGLE_FACT_CHECK_API_URL",
+    "https://factchecktools.googleapis.com/v1alpha1/claims:search",
+)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_API_URL = os.getenv("OPENAI_API_URL", "https://api.openai.com/v1/chat/completions")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")

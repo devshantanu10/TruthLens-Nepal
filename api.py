@@ -20,7 +20,9 @@ from src.config import (
     OPENAI_MODEL,
     OPENAI_AUDIO_URL,
     OPENAI_AUDIO_MODEL,
-    OPENAI_AUDIO_VOICE
+    OPENAI_AUDIO_VOICE,
+    GOOGLE_FACT_CHECK_API_KEY,
+    GOOGLE_FACT_CHECK_API_URL,
 )
 from src.cache import (
     init_db,
@@ -160,7 +162,135 @@ def predict():
         "model_used":      model_used,
     })
 
+def _detect_factcheck_language(query: str) -> str:
+    devanagari = sum(1 for ch in query if "\u0900" <= ch <= "\u097f")
+    latin = sum(1 for ch in query if ch.isascii() and ch.isalpha())
+    if devanagari > latin:
+        return "ne"
+    if latin > 0:
+        return "en"
+    return "ne"
+
+
+def _factcheck_api_request(query: str, language_code: str | None) -> dict:
+    params = {
+        "key": GOOGLE_FACT_CHECK_API_KEY,
+        "query": query,
+        "pageSize": 10,
+    }
+    if language_code:
+        params["languageCode"] = language_code
+
+    label = language_code or "any"
+    logger.info("Google Fact Check query=%r languageCode=%s", query, label)
+    resp = requests.get(GOOGLE_FACT_CHECK_API_URL, params=params, timeout=15)
+    resp.raise_for_status()
+    data = resp.json() if resp.content else {}
+
+    if not isinstance(data, dict):
+        data = {}
+    if "claims" not in data or data["claims"] is None:
+        data["claims"] = []
+    return data
+
+
+def _call_google_fact_check(query: str, language_code: str | None = None) -> dict:
+    if not GOOGLE_FACT_CHECK_API_KEY:
+        raise ValueError(
+            "Google Fact Check API key is not configured. "
+            "Set GOOGLE_FACT_CHECK_API_KEY or GOOGLE_API_KEY in your .env file."
+        )
+
+    detected = _detect_factcheck_language(query)
+    strategies: list[str | None] = []
+    if language_code:
+        strategies.append(language_code)
+    strategies.append(detected)
+    if "en" not in strategies:
+        strategies.append("en")
+    if detected == "ne" and "ne" not in strategies:
+        strategies.append("ne")
+    strategies.append(None)
+
+    seen: set[str] = set()
+    unique_strategies: list[str | None] = []
+    for lang in strategies:
+        key = lang or "__any__"
+        if key in seen:
+            continue
+        seen.add(key)
+        unique_strategies.append(lang)
+
+    strategies_tried: list[str] = []
+    last_data: dict = {"claims": []}
+
+    for lang in unique_strategies:
+        label = lang or "any"
+        strategies_tried.append(label)
+        data = _factcheck_api_request(query, lang)
+        if data.get("claims"):
+            data["query_used_by_backend"] = query
+            data["languageCode"] = label
+            data["matched_language"] = label
+            data["api_source"] = "google_fact_check_tools"
+            data["fetched_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            data["search_strategies_tried"] = strategies_tried
+            return data
+        last_data = data
+
+    last_data["query_used_by_backend"] = query
+    last_data["languageCode"] = detected
+    last_data["api_source"] = "google_fact_check_tools"
+    last_data["fetched_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    last_data["search_strategies_tried"] = strategies_tried
+    last_data["no_match_reason"] = (
+        "Google Fact Check only indexes claims that independent fact-checkers have "
+        "already reviewed. Most routine news headlines are not in this database."
+    )
+    return last_data
+
+
+@app.route('/api/factcheck', methods=['GET', 'POST'])
+def factcheck():
+    if request.method == 'POST':
+        payload = request.get_json(silent=True) or {}
+        query = (payload.get('query') or '').strip()
+        language_code = (payload.get('languageCode') or '').strip() or None
+    else:
+        query = (request.args.get('query') or '').strip()
+        language_code = (request.args.get('languageCode') or '').strip() or None
+
+    if not query:
+        return jsonify({"status": "error", "message": "No query provided"}), 400
+
+    try:
+        return jsonify(_call_google_fact_check(query, language_code))
+    except requests.HTTPError as e:
+        status = e.response.status_code if e.response is not None else 502
+        body = {}
+        try:
+            body = e.response.json() if e.response is not None else {}
+        except Exception:
+            body = {"raw": e.response.text[:500] if e.response is not None else ""}
+        logger.exception("Google Fact Check API HTTP error for query=%r", query)
+        return jsonify({
+            "status": "error",
+            "message": body.get("error", {}).get("message", str(e)),
+            "query_used_by_backend": query,
+            "claims": [],
+            "google_error": body,
+        }), status
+    except Exception as e:
+        logger.exception("Error calling Google Fact Check API for query=%r", query)
+        return jsonify({
+            "status": "error",
+            "message": str(e),
+            "query_used_by_backend": query,
+            "claims": [],
+        }), 500
+
 @app.route('/api/scrape', methods=['GET', 'POST'])
+
 def scrape():
     if request.method == 'POST':
         data = request.get_json(silent=True) or {}
