@@ -1324,17 +1324,20 @@ body {
     box-shadow: 0 14px 32px -10px rgba(220,38,38,0.55);
 }
 
-/* Cards: softer ring + smoother lift */
+/* Cards: premium ring + floating lift micro-interaction */
 .news-card, .scan-card, .url-scan-card, .widget, .kpi-card,
 .admin-panel-card, .fb-import-card, .fb-post-card, .trending-card, .stat-card {
     border-radius: 14px;
     box-shadow: var(--shadow-ring);
-    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    /* Adding cubic-bezier for a spring-like, premium hover animation */
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease, border-color 0.3s ease;
 }
 .news-card:hover, .scan-card:hover, .widget:hover, .stat-card:hover,
 .admin-panel-card:hover, .fb-post-card:hover, .trending-card:hover, .kpi-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 18px 44px -18px rgba(15,23,42,0.2);
+    transform: translateY(-5px) scale(1.01);
+    box-shadow: 0 22px 48px -14px rgba(15, 76, 129, 0.25);
+    border-color: rgba(37, 99, 235, 0.4);
 }
 
 /* Sidebar widget titles get serif accent */
