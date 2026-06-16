@@ -367,9 +367,9 @@ body {
     gap:12px;
     margin-top:16px;
     padding:14px 16px;
-    border:1px solid rgba(56,189,248,.25);
+    border:1px solid rgba(185, 28, 28, 0.25);
     border-radius:18px;
-    background:rgba(224,242,254,.65);
+    background:rgba(254, 242, 242, 0.65);
 }
 .tts-control-row {
     display:grid;
@@ -387,7 +387,7 @@ body {
     width:100%;
     min-width:140px;
     padding:8px 10px;
-    border:1px solid rgba(148,163,184,.4);
+    border:1px solid rgba(185, 28, 28, 0.3);
     border-radius:12px;
     background:#fff;
     color:#0f172a;
@@ -410,8 +410,8 @@ body {
 .tts-model-note {
     font-size:.82rem;
     color:#0f172a;
-    background:rgba(59,130,246,.08);
-    border:1px solid rgba(59,130,246,.18);
+    background:rgba(185, 28, 28, 0.08);
+    border:1px solid rgba(185, 28, 28, 0.18);
     border-radius:12px;
     padding:8px 10px;
     margin-bottom:8px;
@@ -429,8 +429,8 @@ body {
 }
 .summary-result { margin-top:14px; }
 .summary-card {
-    border:1px solid #dbeafe;
-    background:#eff6ff;
+    border:1px solid #fee2e2;
+    background:#fef2f2;
     border-radius:var(--border-radius-md);
     padding:14px 16px;
     color:#0f172a;
