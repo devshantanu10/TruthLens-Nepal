@@ -37,7 +37,11 @@ body {
     background: var(--bg);
     color: var(--text);
     font-size: 15px;
-    line-height: 1.6;
+    /* Upgraded line-height and letter-spacing for Devanagari legibility */
+    line-height: 1.68;
+    letter-spacing: 0.015em;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
 }
 
